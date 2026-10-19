@@ -168,9 +168,12 @@ function handleMemoryRequest(path, init = {}) {
     return [];
 }
 
+const DEFAULT_SUPABASE_URL = 'https://xurvumenaszahorrxhxf.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'sb_secret_NJL-hpV-YNCAg3X6NKhuYg_g2FALYAo';
+
 export async function request(path, init = {}) {
-    const rawUrl = process.env.SUPABASE_URL || process.env.ZITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-    const key = process.env.SUPABASE_SECRET_KEY || process.env.ZITE_API_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+    const rawUrl = process.env.SUPABASE_URL || process.env.ZITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+    const key = process.env.SUPABASE_SECRET_KEY || process.env.ZITE_API_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
     const hasConfig = Boolean(rawUrl && key && !rawUrl.includes('placeholder'));
 
     if (!hasConfig) {

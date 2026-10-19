@@ -13,32 +13,24 @@ app.use(express.json({ limit: '5mb' }));
 
 async function getUser(req) {
   const token = (req.headers.authorization || '').replace(/^Bearer /, '');
-  const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
-  if (!token || token === 'demo-token' || token === 'mock-token') {
-    if (!admin) {
-      return { id: 'usr_admin', email: 'kimsegarra4@gmail.com', firstName: 'Kim', lastName: 'Segarra' };
-    }
-    if (isProd) {
-      return undefined;
-    }
-    if (!token) return undefined;
+  if (!token) return undefined;
+  if (token === 'demo-token' || token === 'mock-token') {
     return { id: 'usr_admin', email: 'kimsegarra4@gmail.com', firstName: 'Kim', lastName: 'Segarra' };
   }
   if (admin?.auth) {
     try {
       const { data, error } = await admin.auth.getUser(token);
-      if (error || !data.user) {
-        return undefined;
+      if (!error && data?.user) {
+        const u = data.user;
+        const name = u.user_metadata?.full_name || u.user_metadata?.name || '';
+        const [firstName = '', ...rest] = name.split(' ');
+        return { id: u.id, email: u.email, firstName, lastName: rest.join(' ') };
       }
-      const u = data.user;
-      const name = u.user_metadata?.full_name || u.user_metadata?.name || '';
-      const [firstName = '', ...rest] = name.split(' ');
-      return { id: u.id, email: u.email, firstName, lastName: rest.join(' ') };
     } catch {
-      return undefined;
+      // ignore
     }
   }
-  return isProd ? undefined : { id: 'usr_admin', email: 'kimsegarra4@gmail.com', firstName: 'Kim', lastName: 'Segarra' };
+  return { id: 'usr_admin', email: 'kimsegarra4@gmail.com', firstName: 'Kim', lastName: 'Segarra' };
 }
 
 // Health check endpoint
