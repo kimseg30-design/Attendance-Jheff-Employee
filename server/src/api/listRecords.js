@@ -1,0 +1,23 @@
+import { z } from 'zod';
+import { createEndpoint } from '../zite/backend.js';
+import { getRole, requireMember, requireTableAccess } from '../lib/roles.js';
+import { TABLES, tableClient } from '../lib/tables.js';
+import { withLog } from '../lib/guard.js';
+export default createEndpoint({
+    authenticated: true,
+    description: 'Lists records from one of the HR tables',
+    inputSchema: z.object({ table: z.enum(TABLES) }),
+    outputSchema: z.object({ records: z.array(z.record(z.any())) }),
+    execute: withLog('listRecords', async ({ input, context }) => {
+        const role = await getRole(context.user);
+        if (role === 'Admin' || role === 'Viewer')
+            await requireMember(context.user);
+        else
+            await requireTableAccess(context.user, input.table, 'read');
+        const { records } = await tableClient(input.table).findAll({ limit: 2000 });
+        if (role === 'Editor' && input.table === 'employees') {
+            return { records: records.map((r) => ({ id: r.id, fullName: r.fullName, active: r.active })) };
+        }
+        return { records };
+    }),
+});
