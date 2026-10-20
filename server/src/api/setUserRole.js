@@ -17,6 +17,17 @@ export default createEndpoint({
     execute: withLog('setUserRole', async ({ input, context }) => {
         await requireAdmin(context.user);
         const email = input.email.trim().toLowerCase();
+
+        // Protect primary admin accounts from being demoted
+        const isPrimaryAdmin = input.userId === 'usr_admin' || email === 'kimsegarra410@gmail.com' || (context.user && (input.userId === context.user.id || email === context.user.email?.toLowerCase()));
+        if (isPrimaryAdmin && input.role !== 'Admin') {
+            throw new ZiteError({
+                code: 'BAD_REQUEST',
+                message: 'Cannot demote primary administrator',
+                userFacingMessage: 'The primary system admin account cannot be demoted. To test how the application behaves for other roles, use the Role Simulator in the top navigation.'
+            });
+        }
+
         if (input.role !== 'Admin') {
             const admins = await zite.userRoles.findAll({ filters: { role: 'Admin' }, limit: 5 });
             const isUserAdmin = admins.records.some((a) => {

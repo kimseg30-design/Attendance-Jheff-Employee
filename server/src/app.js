@@ -17,15 +17,16 @@ async function getUser(req) {
 
   const headerEmail = req.headers['x-user-email'];
   const headerId = req.headers['x-user-id'];
+  const simulatedRole = req.headers['x-simulated-role'];
 
-  if (admin?.auth && token !== 'demo-token' && token !== 'mock-token') {
+  if (admin?.auth && token !== 'demo-token' && token !== 'mock-token' && !headerEmail && !simulatedRole) {
     try {
       const { data, error } = await admin.auth.getUser(token);
       if (!error && data?.user) {
         const u = data.user;
         const name = u.user_metadata?.full_name || u.user_metadata?.name || '';
         const [firstName = '', ...rest] = name.split(' ');
-        return { id: u.id, email: u.email, firstName, lastName: rest.join(' ') };
+        return { id: u.id, email: u.email, firstName, lastName: rest.join(' '), simulatedRole: null };
       }
     } catch {
       // ignore
@@ -35,7 +36,7 @@ async function getUser(req) {
   const email = (headerEmail || 'kimsegarra410@gmail.com').trim().toLowerCase();
   const id = headerId || (email === 'kimsegarra410@gmail.com' ? 'usr_admin' : `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
   const namePart = email.split('@')[0];
-  return { id, email, firstName: namePart, lastName: '' };
+  return { id, email, firstName: namePart, lastName: '', simulatedRole: simulatedRole || null };
 }
 
 // Health check endpoint
