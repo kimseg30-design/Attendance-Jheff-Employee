@@ -15,7 +15,8 @@ const toRow = (r) => Object.fromEntries(Object.entries(r)
 export const sf = {
     async list(t, limit = 5000) {
         const order = t === 'auditLog' ? 'created_at.desc' : 'created_at.asc';
-        return (await request(`/rest/v1/${tbl(t)}?select=*&order=${order}&limit=${limit}`)).map(fromRow);
+        const rows = await request(`/rest/v1/${tbl(t)}?select=*&order=${order}&limit=${limit}`);
+        return (Array.isArray(rows) ? rows : []).map(fromRow);
     },
     async get(t, id) {
         const rows = (await request(`/rest/v1/${tbl(t)}?select=*&id=eq.${encodeURIComponent(String(id))}`));

@@ -16,8 +16,8 @@ export default createEndpoint({
     }),
     execute: withLog('getSystemHealth', async ({ context }) => {
         await requireAdmin(context.user, 'read');
-        const rawUrl = process.env.ZITE_SUPABASE_URL || process.env.SUPABASE_URL;
-        const key = process.env.ZITE_API_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+        const rawUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://xurvumenaszahorrxhxf.supabase.co';
+        const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_0uYtc2gANKbcM2trdrO8zA_DINcfSiZ';
         let database;
         const started = Date.now();
         if (!rawUrl || !key) {

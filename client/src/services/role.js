@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { getMyRole } from '@/zite/api';
-const DEFAULT_ADMIN_EMAIL = 'kimsegarra4@gmail.com';
+const DEFAULT_ADMIN_EMAILS = ['kimsegarra4@gmail.com', 'kimsegarra516@gmail.com'];
 
 export function useRole(user) {
-    const isDefaultAdmin = user?.email?.trim().toLowerCase() === DEFAULT_ADMIN_EMAIL;
+    const isDefaultAdmin = Boolean(user?.email && DEFAULT_ADMIN_EMAILS.includes(user.email.trim().toLowerCase()));
     const hasPreApprovedAdminSession = typeof window !== 'undefined'
         && window.localStorage.getItem('sahod_admin_session') === 'true';
     const { data, isLoading } = useQuery({

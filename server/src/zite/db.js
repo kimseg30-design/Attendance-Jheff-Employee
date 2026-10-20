@@ -6,20 +6,55 @@ import { createClient } from '@supabase/supabase-js';
 import { memoryDb } from '../lib/memoryStore.js';
 
 const DEFAULT_SUPABASE_URL = 'https://xurvumenaszahorrxhxf.supabase.co';
-const DEFAULT_SUPABASE_KEY = 'sb_secret_NJL-hpV-YNCAg3X6NKhuYg_g2FALYAo';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_0uYtc2gANKbcM2trdrO8zA_DINcfSiZ';
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.ZITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.ZITE_API_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_KEY;
+function normalizeSupabaseUrl(url) {
+  if (!url) return '';
+  try {
+    return new URL(url).origin;
+  } catch {
+    return String(url).replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+  }
+}
 
-const isConfigured = Boolean(
-  supabaseUrl &&
-  supabaseKey &&
-  !supabaseUrl.includes('placeholder')
-);
+function cleanConfigValue(val, fallback) {
+  if (!val) return fallback;
+  const str = String(val).trim();
+  if (
+    str === '' ||
+    str.includes('your-project') ||
+    str.includes('placeholder') ||
+    str.includes('example')
+  ) {
+    return fallback;
+  }
+  return str;
+}
+
+const supabaseUrl = normalizeSupabaseUrl(cleanConfigValue(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, DEFAULT_SUPABASE_URL));
+const supabaseKey = cleanConfigValue(process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_PUBLISHABLE_KEY);
+
+function isValidSupabaseConfig(url, key) {
+  if (!url || !key) return false;
+  const str = String(url).trim().toLowerCase();
+  if (
+    str === '' ||
+    str.includes('placeholder') ||
+    str.includes('your-project') ||
+    str.includes('example') ||
+    !str.startsWith('http')
+  ) {
+    return false;
+  }
+  return true;
+}
+
+const isConfigured = isValidSupabaseConfig(supabaseUrl, supabaseKey);
 
 export const admin = isConfigured
   ? createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
   : null;
+
 
 const COL = { user: 'user_id' };
 const snake = (k) => COL[k] || k.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());

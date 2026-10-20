@@ -35,7 +35,7 @@ export default createEndpoint({
         const days = {};
         for (let i = 0; i < 14; i++)
             days[format(addDays(parseISO(start), i), 'yyyy-MM-dd')] = { present: 0, absent: 0 };
-        for (const r of att) {
+        for (const r of (att || [])) {
             const k = String(r.work_date).slice(0, 10);
             if (!days[k])
                 continue;
@@ -44,19 +44,19 @@ export default createEndpoint({
             else if (r.status === 'Absent')
                 days[k].absent++;
         }
-        const last = slips[0];
+        const last = (slips || [])[0];
         const lastRows = last ? slips.filter((s) => s.period_label === last.period_label && s.period_end === last.period_end) : [];
         return {
             date,
-            activeEmployees: Number(d.activeEmployees ?? 0),
-            presentToday: days[date].present,
-            absentToday: days[date].absent,
-            pendingLeaves: Number(d.pendingLeaves ?? 0),
-            outstandingLoans: Number(d.outstandingLoans ?? 0),
+            activeEmployees: Number(d?.activeEmployees ?? 0),
+            presentToday: days[date]?.present ?? 0,
+            absentToday: days[date]?.absent ?? 0,
+            pendingLeaves: Number(d?.pendingLeaves ?? 0),
+            outstandingLoans: Number(d?.outstandingLoans ?? 0),
             lastPayrollTotal: lastRows.reduce((a, s) => a + Number(s.net_pay || 0), 0),
             lastPayrollLabel: last?.period_label ? String(last.period_label) : null,
             attendanceByDay: Object.entries(days).map(([k, v]) => ({ date: k, ...v })),
-            byDepartment: (d.byDepartment ?? []).map((r) => ({ name: String(r.name), count: Number(r.count) })),
+            byDepartment: (d?.byDepartment ?? []).map((r) => ({ name: String(r.name), count: Number(r.count) })),
         };
     }),
 });

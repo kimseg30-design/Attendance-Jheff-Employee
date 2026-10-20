@@ -40,7 +40,6 @@ In **Vercel -> Project Settings -> Environment Variables**, add:
 # Supabase Configuration
 SUPABASE_URL=https://xurvumenaszahorrxhxf.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_0uYtc2gANKbcM2trdrO8zA_DINcfSiZ
-SUPABASE_SECRET_KEY=sb_secret_NJL-hpV-YNCAg3X6NKhuYg_g2FALYAo
 SUPABASE_JWKS_URL=https://xurvumenaszahorrxhxf.supabase.co/auth/v1/.well-known/jwks.json
 
 # Client-Side Exposed Variables

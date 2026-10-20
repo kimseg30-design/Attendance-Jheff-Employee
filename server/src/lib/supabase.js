@@ -117,6 +117,22 @@ function handleMemoryRequest(path, init = {}) {
             });
         }
 
+        // Apply ordering
+        const orderParam = url.searchParams.get('order');
+        if (orderParam) {
+            const [orderCol, orderDir] = orderParam.split('.');
+            const isDesc = orderDir === 'desc';
+            const propCamel = camel(orderCol);
+            const propSnake = snake(orderCol);
+            items.sort((a, b) => {
+                const valA = a[propCamel] ?? a[propSnake] ?? '';
+                const valB = b[propCamel] ?? b[propSnake] ?? '';
+                if (valA < valB) return isDesc ? 1 : -1;
+                if (valA > valB) return isDesc ? -1 : 1;
+                return 0;
+            });
+        }
+
         // Apply limit
         const limit = Number(url.searchParams.get('limit') || 2000);
         return items.slice(0, limit).map(itemToDbRow);
@@ -136,7 +152,7 @@ function handleMemoryRequest(path, init = {}) {
             inserted.push(itemToDbRow(item));
         }
 
-        return Array.isArray(body) ? inserted : inserted[0];
+        return inserted;
     }
 
     if (method === 'PATCH') {
@@ -169,12 +185,50 @@ function handleMemoryRequest(path, init = {}) {
 }
 
 const DEFAULT_SUPABASE_URL = 'https://xurvumenaszahorrxhxf.supabase.co';
-const DEFAULT_SUPABASE_KEY = 'sb_secret_NJL-hpV-YNCAg3X6NKhuYg_g2FALYAo';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_0uYtc2gANKbcM2trdrO8zA_DINcfSiZ';
+
+function cleanConfigValue(val, fallback) {
+    if (!val) return fallback;
+    const str = String(val).trim();
+    if (
+        str === '' ||
+        str.includes('your-project') ||
+        str.includes('placeholder') ||
+        str.includes('example')
+    ) {
+        return fallback;
+    }
+    return str;
+}
+
+function normalizeSupabaseUrl(url) {
+    if (!url) return '';
+    try {
+        return new URL(url).origin;
+    } catch {
+        return String(url).replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+    }
+}
+
+function isValidSupabaseConfig(url, key) {
+    if (!url || !key) return false;
+    const str = String(url).trim().toLowerCase();
+    if (
+        str === '' ||
+        str.includes('placeholder') ||
+        str.includes('your-project') ||
+        str.includes('example') ||
+        !str.startsWith('http')
+    ) {
+        return false;
+    }
+    return true;
+}
 
 export async function request(path, init = {}) {
-    const rawUrl = process.env.SUPABASE_URL || process.env.ZITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-    const key = process.env.SUPABASE_SECRET_KEY || process.env.ZITE_API_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
-    const hasConfig = Boolean(rawUrl && key && !rawUrl.includes('placeholder'));
+    const rawUrl = normalizeSupabaseUrl(cleanConfigValue(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, DEFAULT_SUPABASE_URL));
+    const key = cleanConfigValue(process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_PUBLISHABLE_KEY);
+    const hasConfig = isValidSupabaseConfig(rawUrl, key);
 
     if (!hasConfig) {
         return handleMemoryRequest(path, init);
@@ -184,7 +238,7 @@ export async function request(path, init = {}) {
         const base = new URL(rawUrl).origin;
         const res = await fetch(`${base}${path}`, {
             ...init,
-            signal: AbortSignal.timeout(3500),
+            signal: AbortSignal.timeout(2000),
             headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=representation', ...init.headers },
         });
         const text = await res.text();

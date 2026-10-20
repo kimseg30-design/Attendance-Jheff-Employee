@@ -1,6 +1,6 @@
 import { zite } from '../zite/db.js';
 import { ZiteError } from '../zite/backend.js';
-const LIMITS = { read: 60, write: 20 };
+const LIMITS = { read: 300, write: 100 };
 /** Records a failed or blocked action so admins can review it under System health. Never throws. */
 export async function logFailure(summary, errorCode, userEmail, details, endpoint) {
     try {

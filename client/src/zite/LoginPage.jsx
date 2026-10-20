@@ -20,7 +20,8 @@ export default function LoginPage() {
 
   const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
   const callbackUrl = `${window.location.origin}/auth/callback`;
-  const supabaseCallbackUrl = 'https://xurvumenaszahorrxhxf.supabase.co/auth/v1/callback';
+  const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || 'https://xurvumenaszahorrxhxf.supabase.co';
+  const supabaseCallbackUrl = `${rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')}/auth/v1/callback`;
 
   // Listen for popup OAuth success
   useEffect(() => {
@@ -40,6 +41,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setMessage('');
+
+    if (!isSupabaseConfigured) {
+      setError('Supabase is not configured yet. Click "Sign in as Kim Segarra" above to use local sandbox mode.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -76,6 +83,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setMessage('');
+
+    if (!isSupabaseConfigured) {
+      setError('Supabase is not configured yet. Click "Sign in as Kim Segarra" above to use local sandbox mode.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -98,6 +111,12 @@ export default function LoginPage() {
   const handleGoogle = async () => {
     setError('');
     setMessage('');
+
+    if (!isSupabaseConfigured) {
+      setError('Supabase is not configured yet. Click "Sign in as Kim Segarra" above to use local sandbox mode.');
+      return;
+    }
+
     setLoading(true);
 
     try {
