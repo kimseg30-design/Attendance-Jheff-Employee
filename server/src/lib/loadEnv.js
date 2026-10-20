@@ -32,3 +32,20 @@ loadFile(path.resolve(process.cwd(), '.env'));
 // Purge any revoked/exposed secret keys from container environment
 delete process.env.SUPABASE_SECRET_KEY;
 delete process.env.ZITE_API_KEY;
+
+const TARGET_SUPABASE_URL = 'https://xurvumenaszahorrxhxf.supabase.co';
+const TARGET_PUBLISHABLE_KEY = 'sb_publishable_0uYtc2gANKbcM2trdrO8zA_DINcfSiZ';
+
+// Clean placeholder or truncated keys provided by host container
+if (!process.env.SUPABASE_URL || process.env.SUPABASE_URL.includes('your-project') || process.env.SUPABASE_URL.includes('placeholder')) {
+  process.env.SUPABASE_URL = TARGET_SUPABASE_URL;
+}
+if (!process.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL.includes('your-project') || process.env.VITE_SUPABASE_URL.includes('placeholder')) {
+  process.env.VITE_SUPABASE_URL = TARGET_SUPABASE_URL;
+}
+if (!process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY.endsWith('...') || process.env.SUPABASE_PUBLISHABLE_KEY.length < 25) {
+  process.env.SUPABASE_PUBLISHABLE_KEY = TARGET_PUBLISHABLE_KEY;
+}
+if (!process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY.endsWith('...') || process.env.VITE_SUPABASE_ANON_KEY.length < 25) {
+  process.env.VITE_SUPABASE_ANON_KEY = TARGET_PUBLISHABLE_KEY;
+}

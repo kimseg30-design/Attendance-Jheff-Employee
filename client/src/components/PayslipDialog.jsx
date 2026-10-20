@@ -6,6 +6,7 @@ import { Printer, Landmark, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-
 import { fmtDate, peso, firstId } from '../utils/format';
 import { useSf } from '../services/sf';
 import LoanToggles from './PayslipLoanToggles';
+import { printSinglePayslip4Up } from '@/shared/lib/printPayslips';
 
 function Line({ label, value, neg, bold }) {
   return (
@@ -85,6 +86,14 @@ export default function PayslipDialog({ slip, employee, onClose }) {
 
   const toggleExpand = (id) => {
     setExpandedLoans((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handlePrint4Up = () => {
+    printSinglePayslip4Up(s, {
+      employees: employee ? [employee] : [],
+      sfMembers: sf?.members,
+      sfCalcs: sf?.calcs,
+    });
   };
 
   const print = () => {
@@ -305,8 +314,11 @@ export default function PayslipDialog({ slip, employee, onClose }) {
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={print}>
-            <Printer className="mr-2 h-4 w-4" />Print
+          <Button variant="outline" onClick={handlePrint4Up}>
+            <Printer className="mr-2 h-4 w-4" />Print 4-in-1 (Bond Paper)
+          </Button>
+          <Button variant="ghost" size="sm" onClick={print} title="Print single full-page slip">
+            Full Page
           </Button>
         </div>
       </DialogContent>

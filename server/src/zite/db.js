@@ -24,7 +24,9 @@ function cleanConfigValue(val, fallback) {
     str === '' ||
     str.includes('your-project') ||
     str.includes('placeholder') ||
-    str.includes('example')
+    str.includes('example') ||
+    str.endsWith('...') ||
+    str.length < 25
   ) {
     return fallback;
   }
