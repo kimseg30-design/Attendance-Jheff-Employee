@@ -14,6 +14,12 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 );
 
+// Auto-reload on Vite chunk load error after deployment
+window.addEventListener('vite:preloadError', (event) => {
+  event?.preventDefault();
+  window.location.reload();
+});
+
 // Register PWA Service Worker for offline capability & mobile installability
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {

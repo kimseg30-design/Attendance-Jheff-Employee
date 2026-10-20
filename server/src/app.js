@@ -68,8 +68,24 @@ app.post(['/api/:name', '/:name', '/api', '/'], async (req, res) => {
 // Serve client dist in monolithic/container mode if it exists
 const dist = path.resolve(__dirname, '../../client/dist');
 if (fs.existsSync(dist)) {
-  app.use(express.static(dist));
-  app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
+  app.use(express.static(dist, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
+    }
+  }));
+
+  // Never fall back to index.html for static assets or scripts
+  app.all(['/assets/*', '/icons/*', '*.js', '*.css'], (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.status(404).type('text/plain').send('Asset not found');
+  });
+
+  app.get('*', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(dist, 'index.html'));
+  });
 }
 
 export default app;

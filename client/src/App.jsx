@@ -8,24 +8,42 @@ import ModuleAccessGate from './components/ModuleAccessGate';
 import EditorHome from './components/EditorHome';
 import Layout from './components/Layout';
 import AppErrorBoundary from './components/AppErrorBoundary';
-const AttendancePage = lazy(() => import('./pages/AttendancePage'));
-const PayrollPage = lazy(() => import('./pages/PayrollPage'));
-const ReportsPage = lazy(() => import('./pages/ReportsPage'));
-const EmployeesPage = lazy(() => import('./pages/EmployeesPage'));
-const LeavesPage = lazy(() => import('./pages/LeavesPage'));
-const CashAdvancesPage = lazy(() => import('./pages/CashAdvancesPage'));
-const PayrollLoansPage = lazy(() => import('./pages/PayrollLoansPage'));
-const DepartmentsPage = lazy(() => import('./pages/DepartmentsPage'));
-const UsersPage = lazy(() => import('./pages/UsersPage'));
-const SfDashboardPage = lazy(() => import('./pages/sinking/SfDashboardPage'));
-const SfLoansPage = lazy(() => import('./pages/sinking/SfLoansPage'));
-const SfInterestReconciliationPage = lazy(() => import('./pages/sinking/SfInterestReconciliationPage'));
-const SfLoanDetailPage = lazy(() => import('./pages/sinking/SfLoanDetailPage'));
-const SfAddLoanPage = lazy(() => import('./pages/sinking/SfAddLoanPage'));
-const SfMembersPage = lazy(() => import('./pages/sinking/SfMembersPage'));
-const SfContributionsPage = lazy(() => import('./pages/sinking/SfContributionsPage'));
-const SfAuditPage = lazy(() => import('./pages/sinking/SfAuditPage'));
-const SfSettingsPage = lazy(() => import('./pages/sinking/SfSettingsPage'));
+
+function lazyWithRetry(factory) {
+  return lazy(async () => {
+    try {
+      return await factory();
+    } catch (err) {
+      const now = Date.now();
+      const lastRetry = Number(sessionStorage.getItem('last_lazy_retry') || 0);
+      if (now - lastRetry > 3000) {
+        sessionStorage.setItem('last_lazy_retry', String(now));
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw err;
+    }
+  });
+}
+
+const AttendancePage = lazyWithRetry(() => import('./pages/AttendancePage'));
+const PayrollPage = lazyWithRetry(() => import('./pages/PayrollPage'));
+const ReportsPage = lazyWithRetry(() => import('./pages/ReportsPage'));
+const EmployeesPage = lazyWithRetry(() => import('./pages/EmployeesPage'));
+const LeavesPage = lazyWithRetry(() => import('./pages/LeavesPage'));
+const CashAdvancesPage = lazyWithRetry(() => import('./pages/CashAdvancesPage'));
+const PayrollLoansPage = lazyWithRetry(() => import('./pages/PayrollLoansPage'));
+const DepartmentsPage = lazyWithRetry(() => import('./pages/DepartmentsPage'));
+const UsersPage = lazyWithRetry(() => import('./pages/UsersPage'));
+const SfDashboardPage = lazyWithRetry(() => import('./pages/sinking/SfDashboardPage'));
+const SfLoansPage = lazyWithRetry(() => import('./pages/sinking/SfLoansPage'));
+const SfInterestReconciliationPage = lazyWithRetry(() => import('./pages/sinking/SfInterestReconciliationPage'));
+const SfLoanDetailPage = lazyWithRetry(() => import('./pages/sinking/SfLoanDetailPage'));
+const SfAddLoanPage = lazyWithRetry(() => import('./pages/sinking/SfAddLoanPage'));
+const SfMembersPage = lazyWithRetry(() => import('./pages/sinking/SfMembersPage'));
+const SfContributionsPage = lazyWithRetry(() => import('./pages/sinking/SfContributionsPage'));
+const SfAuditPage = lazyWithRetry(() => import('./pages/sinking/SfAuditPage'));
+const SfSettingsPage = lazyWithRetry(() => import('./pages/sinking/SfSettingsPage'));
 const queryClient = new QueryClient({ defaultOptions: { queries: {
             staleTime: 30_000,
             refetchOnWindowFocus: false,

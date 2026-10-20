@@ -41,7 +41,7 @@ export default function PayrollPage() {
         const line = (label, value, negative = false) => `<div class="line"><span>${escapeHtml(label)}</span><b>${negative && Number(value) > 0 ? '−' : ''}${escapeHtml(peso(value))}</b></div>`;
         const norm = (v) => String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 
-        const slipsHtml = releasedRows.map((p) => {
+        const renderSlip = (p) => {
             const emp = emps.list.find((e) => e.id === firstId(p.employee));
             const deductions = (Number(p.sss) || 0) + (Number(p.philHealth) || 0) + (Number(p.pagIbig) || 0) + (Number(p.withholdingTax) || 0) + (Number(p.loanDeductions) || 0) + (Number(p.cashAdvanceDeduction) || 0) + (Number(p.sinkingContributionDeduction) || 0) + (Number(p.lateDeduction) || 0);
             let details = [];
@@ -64,23 +64,22 @@ export default function PayrollPage() {
             const activePaymentsTotal = activeLoans.reduce((sum, c) => sum + (c.ledger?.length || 0), 0);
 
             const activeLoansHtml = activeLoans.length > 0 ? `
-                <section style="margin-top:3mm;border-top:1px dashed #000;padding-top:2mm;">
-                    <div style="font-weight:bold;font-size:9px;margin-bottom:1mm;">ACTIVE LOANS & PAYMENTS MADE (${activePaymentsTotal} Total)</div>
+                <section style="margin-top:1.5mm;border-top:1px dashed #000;padding-top:1mm;">
+                    <div style="font-weight:bold;font-size:7.5px;margin-bottom:0.8mm;">ACTIVE LOANS &amp; PAYMENTS (${activePaymentsTotal})</div>
                     ${activeLoans.map((c, i) => {
                         const payments = c.ledger || [];
                         const applied = sfLoans.find((d) => String(d.id) === String(c.loan.id));
                         return `
-                        <div style="margin-bottom:2mm;padding:1mm 0;border-bottom:0.5px dotted #999;">
+                        <div style="margin-bottom:1mm;padding:0.5mm 0;border-bottom:0.5px dotted #999;font-size:7px;">
                             <div style="font-weight:bold;">Loan #${i + 1}: ${escapeHtml(c.loan.borrowerName)} (${escapeHtml(c.loan.loanGroup || '1st Group')})</div>
-                            <div style="color:#444;">Principal: ${escapeHtml(peso(c.basePrincipal))}</div>
-                            <div>Payments made: <b>${payments.length} ${payments.length === 1 ? 'payment' : 'payments'}</b> (Total paid: ${escapeHtml(peso(c.totalCollected))})</div>
-                            ${payments.map((pm, pidx) => `
-                                <div style="display:flex;justify-content:space-between;color:#555;padding-left:2mm;font-size:8px;">
+                            <div style="color:#444;">Principal: ${escapeHtml(peso(c.basePrincipal))} · Paid: <b>${payments.length} (${escapeHtml(peso(c.totalCollected))})</b></div>
+                            ${payments.slice(-3).map((pm, pidx) => `
+                                <div style="display:flex;justify-content:space-between;color:#555;padding-left:1.5mm;font-size:6.5px;">
                                     <span>#${pidx + 1} (${escapeHtml(fmtDate(pm.paidOn))})</span>
                                     <span>${escapeHtml(peso(pm.amount))}</span>
                                 </div>
                             `).join('')}
-                            <div style="display:flex;justify-content:space-between;font-weight:bold;margin-top:1mm;">
+                            <div style="display:flex;justify-content:space-between;font-weight:bold;margin-top:0.5mm;">
                                 <span>Cutoff deduction:</span>
                                 <span>${escapeHtml(peso(applied ? applied.amount : c.installment))}</span>
                             </div>
@@ -89,15 +88,88 @@ export default function PayrollPage() {
                 </section>
             ` : '';
 
-            return `<article class="slip"><header><h2>PAYSLIP</h2><div class="name">${escapeHtml(emp?.fullName ?? '—')}</div><div>${escapeHtml(emp?.position ?? '')}${emp?.employeeNo ? ` · ${escapeHtml(emp.employeeNo)}` : ''}</div><div class="period">${escapeHtml(p.periodLabel)}<br>${escapeHtml(fmtDate(p.periodStart))} – ${escapeHtml(fmtDate(p.periodEnd))}</div></header><section><h3>EARNINGS</h3>${line('Days worked', p.daysWorked)}${Number(p.daysAbsent) > 0 ? line('Days absent', p.daysAbsent) : ''}${line('Basic pay', p.basicPay)}${line('Overtime', p.overtimePay)}${line('Other benefits', p.otherBenefits)}${line('Night differential', p.nightDiffPay)}${line('Holiday / rest day', p.holidayPay)}${line('Late / undertime', p.lateDeduction, true)}${line('Gross pay', p.grossPay)}</section><section><h3>DEDUCTIONS</h3>${line('SSS', p.sss)}${line('PhilHealth', p.philHealth)}${line('Pag-IBIG', p.pagIbig)}${line('Withholding tax', p.withholdingTax)}${line('Cash advances', p.cashAdvanceDeduction)}${line('Sinking Fund contribution', p.sinkingContributionDeduction)}${loanLines}${line('Total deductions', deductions)}</section>${activeLoansHtml}<div class="net"><span>NET PAY</span><strong>${escapeHtml(peso(p.netPay))}</strong></div><footer>TIN ${escapeHtml(emp?.tin || '—')}<br>SSS ${escapeHtml(emp?.sssNo || '—')}<br>PhilHealth ${escapeHtml(emp?.philHealthNo || '—')} · Pag-IBIG ${escapeHtml(emp?.pagIbigNo || '—')}</footer></article>`;
+            return `
+            <div class="slip-cell">
+              <article class="slip">
+                <header>
+                  <h2>PAYSLIP</h2>
+                  <div class="name">${escapeHtml(emp?.fullName ?? '—')}</div>
+                  <div class="emp-meta">${escapeHtml(emp?.position ?? '')}${emp?.employeeNo ? ` · ${escapeHtml(emp.employeeNo)}` : ''}</div>
+                  <div class="period">${escapeHtml(p.periodLabel)}<br>${escapeHtml(fmtDate(p.periodStart))} – ${escapeHtml(fmtDate(p.periodEnd))}</div>
+                </header>
+                <section>
+                  <h3>EARNINGS</h3>
+                  ${line('Days worked', p.daysWorked)}
+                  ${Number(p.daysAbsent) > 0 ? line('Days absent', p.daysAbsent) : ''}
+                  ${line('Basic pay', p.basicPay)}
+                  ${line('Overtime', p.overtimePay)}
+                  ${line('Other benefits', p.otherBenefits)}
+                  ${line('Night differential', p.nightDiffPay)}
+                  ${line('Holiday / rest day', p.holidayPay)}
+                  ${line('Late / undertime', p.lateDeduction, true)}
+                  ${line('Gross pay', p.grossPay)}
+                </section>
+                <section>
+                  <h3>DEDUCTIONS</h3>
+                  ${line('SSS', p.sss)}
+                  ${line('PhilHealth', p.philHealth)}
+                  ${line('Pag-IBIG', p.pagIbig)}
+                  ${line('Withholding tax', p.withholdingTax)}
+                  ${line('Cash advances', p.cashAdvanceDeduction)}
+                  ${line('Sinking Fund contribution', p.sinkingContributionDeduction)}
+                  ${loanLines}
+                  ${line('Total deductions', deductions)}
+                </section>
+                ${activeLoansHtml}
+                <div class="net">
+                  <span>NET PAY</span>
+                  <strong>${escapeHtml(peso(p.netPay))}</strong>
+                </div>
+                <footer>
+                  TIN ${escapeHtml(emp?.tin || '—')}<br>
+                  SSS ${escapeHtml(emp?.sssNo || '—')}<br>
+                  PhilHealth ${escapeHtml(emp?.philHealthNo || '—')} · Pag-IBIG ${escapeHtml(emp?.pagIbigNo || '—')}
+                </footer>
+              </article>
+            </div>`;
+        };
+
+        const pages = [];
+        for (let i = 0; i < releasedRows.length; i += 4) {
+            pages.push(releasedRows.slice(i, i + 4));
+        }
+
+        const sheetsHtml = pages.map((pageRows) => {
+            const cells = pageRows.map(renderSlip).join('');
+            return `<div class="bondpaper-sheet">${cells}</div>`;
         }).join('');
-        const win = window.open('', '_blank', 'width=440,height=720');
-        if (!win) {
+
+        const htmlContent = `<!doctype html><html><head><title>Payslips · ${escapeHtml(period)}</title><meta charset="utf-8"><style>@page{size:portrait;margin:4mm 6mm}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8px;line-height:1.25}.bondpaper-sheet{width:100%;max-width:210mm;min-height:260mm;max-height:275mm;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid}.bondpaper-sheet:last-child{page-break-after:auto;break-after:auto}.slip-cell{box-sizing:border-box;padding:3mm 4mm;display:flex;flex-direction:column;justify-content:flex-start;border-right:1px dashed #777;border-bottom:1px dashed #777;overflow:hidden}.slip-cell:nth-child(2n){border-right:none}.slip-cell:nth-child(n+3){border-bottom:none}.slip{width:100%;max-width:86mm;margin:0 auto}header{text-align:center;border-bottom:1px dashed #000;padding-bottom:1.5mm;margin-bottom:1.5mm}h2{font-size:13px;margin:0 0 0.8mm;letter-spacing:1px}.name{font-size:10.5px;font-weight:bold;margin-bottom:0.5mm}.emp-meta{font-size:7.5px;color:#222}.period{font-weight:bold;font-size:8px;margin-top:1mm}section{margin:0 0 1.5mm}h3{font-size:8px;margin:0 0 0.8mm;padding-bottom:0.5mm;border-bottom:1px solid #000;letter-spacing:0.5px}.line{display:flex;justify-content:space-between;gap:1.5mm;padding:0.4mm 0;font-size:7.5px}.line span{max-width:50mm;overflow-wrap:anywhere}.line b{text-align:right;white-space:nowrap;font-weight:normal}.net{border-top:1.2px solid #000;border-bottom:1.2px solid #000;padding:1mm 0;margin:1.5mm 0;display:flex;justify-content:space-between;align-items:center;font-weight:bold}.net span{font-size:8.5px}.net strong{font-size:13px;white-space:nowrap}footer{font-size:6.8px;line-height:1.35;overflow-wrap:anywhere;border-top:1px dashed #000;padding-top:1mm;text-align:center}@media print and (max-width:90mm){.bondpaper-sheet{display:block;min-height:auto;max-height:none}.slip-cell{border-right:none!important;border-bottom:1px dashed #000!important;padding:3mm 0}}@media screen{body{background:#f1f5f9;padding:16px}.bondpaper-sheet{background:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.12);margin:16px auto;padding:4mm 6mm}}</style></head><body>${sheetsHtml}<script>window.onload=()=>{window.focus();window.print()}</script></body></html>`;
+
+        const printWindow = window.open('', '_blank', 'width=850,height=900');
+        if (!printWindow) {
+            // Invisible iframe fallback in case popups are blocked in iframe
+            const frame = document.createElement('iframe');
+            frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+            document.body.appendChild(frame);
+            const doc = frame.contentDocument || frame.contentWindow?.document;
+            if (doc) {
+                doc.open();
+                doc.write(htmlContent);
+                doc.close();
+                setTimeout(() => {
+                    frame.contentWindow?.focus();
+                    frame.contentWindow?.print();
+                    setTimeout(() => frame.remove(), 2000);
+                }, 400);
+                return;
+            }
             toast.error('Please allow pop-ups to print payslips.');
             return;
         }
-        win.document.write(`<!doctype html><html><head><title>Payslips · ${escapeHtml(period)}</title><meta charset="utf-8"><style>@page{size:80mm auto;margin:3mm}*{box-sizing:border-box}html,body{margin:0;padding:0;width:74mm;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:10px}.slip{width:100%;padding:2mm 0 3mm;page-break-after:always;break-after:page}.slip:last-child{page-break-after:auto;break-after:auto}header{text-align:center;border-bottom:1px dashed #000;padding-bottom:3mm;margin-bottom:3mm}h2{font-size:15px;margin:0 0 2mm;letter-spacing:1px}.name{font-size:12px;font-weight:bold;margin-bottom:1mm}.period{font-weight:bold;margin-top:2mm}section{margin:0 0 3mm}h3{font-size:10px;margin:0 0 1mm;padding-bottom:1mm;border-bottom:1px solid #000}.line{display:flex;justify-content:space-between;gap:2mm;padding:1mm 0}.line span{max-width:48mm;overflow-wrap:anywhere}.line b{text-align:right;white-space:nowrap;font-weight:normal}.net{border-top:1.5px solid #000;border-bottom:1.5px solid #000;padding:2mm 0;margin:3mm 0;display:flex;justify-content:space-between;align-items:center;font-weight:bold}.net strong{font-size:15px;white-space:nowrap}footer{font-size:8px;line-height:1.5;overflow-wrap:anywhere;border-top:1px dashed #000;padding-top:2mm}@media screen{body{margin:0 auto}.slip{padding:6mm 0}} </style></head><body>${slipsHtml}<script>window.onload=()=>{window.focus();window.print()}</script></body></html>`);
-        win.document.close();
+        printWindow.document.open();
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
     }, [period, releasedRows, emps.list, sf.members, sf.calcs]);
     const qc = useQueryClient();
     const release = useMutation({

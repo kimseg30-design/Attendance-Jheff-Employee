@@ -1,5 +1,5 @@
 // Sahod PWA Service Worker
-const CACHE_NAME = 'sahod-pwa-v1';
+const CACHE_NAME = 'sahod-pwa-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -60,7 +60,9 @@ self.addEventListener('fetch', (event) => {
       caches.match(event.request).then((cached) => {
         if (cached) return cached;
         return fetch(event.request).then((response) => {
-          if (response && response.status === 200) {
+          const contentType = response?.headers?.get('content-type') || '';
+          // Only cache successful responses that are NOT html fallback
+          if (response && response.status === 200 && !contentType.includes('text/html')) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
