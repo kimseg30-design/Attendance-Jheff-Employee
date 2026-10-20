@@ -2,9 +2,11 @@
 import { useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
+const DEFAULT_ADMIN_EMAIL = 'kimsegarra410@gmail.com';
+
 const MOCK_USER = {
   id: 'usr_admin',
-  email: 'kimsegarra4@gmail.com',
+  email: DEFAULT_ADMIN_EMAIL,
   name: 'Kim Segarra',
   firstName: 'Kim',
   lastName: 'Segarra',
@@ -13,6 +15,18 @@ const MOCK_USER = {
   createdAt: new Date('2023-01-01'),
   updatedAt: new Date(),
 };
+
+function getActiveMockUser() {
+  const email = (typeof window !== 'undefined' && localStorage.getItem('sahod_demo_email')) || DEFAULT_ADMIN_EMAIL;
+  const namePart = email.split('@')[0];
+  return {
+    ...MOCK_USER,
+    id: email === DEFAULT_ADMIN_EMAIL ? 'usr_admin' : `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}`,
+    email,
+    name: namePart,
+    firstName: namePart,
+  };
+}
 
 function toUser(u) {
   if (!u) return null;
@@ -36,7 +50,7 @@ export function useAuth() {
   const [state, setState] = useState(() => {
     const adminSession = typeof window !== 'undefined' ? localStorage.getItem('sahod_admin_session') : null;
     if (adminSession === 'true') {
-      return { user: MOCK_USER, isLoading: false };
+      return { user: getActiveMockUser(), isLoading: false };
     }
     return { user: null, isLoading: true };
   });
@@ -51,23 +65,26 @@ export function useAuth() {
         if (!error && data?.session?.user) {
           setState({ user: toUser(data.session.user), isLoading: false });
         } else if (adminSession === 'true') {
-          setState({ user: MOCK_USER, isLoading: false });
+          setState({ user: getActiveMockUser(), isLoading: false });
         } else {
           setState({ user: null, isLoading: false });
         }
       }).catch(() => {
         if (!active) return;
-        setState({ user: adminSession === 'true' ? MOCK_USER : null, isLoading: false });
+        setState({ user: adminSession === 'true' ? getActiveMockUser() : null, isLoading: false });
       });
 
       const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
         if (!active) return;
         if (session?.user) {
-          if (typeof window !== 'undefined') localStorage.removeItem('sahod_admin_session');
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('sahod_admin_session');
+            localStorage.removeItem('sahod_demo_email');
+          }
           setState({ user: toUser(session.user), isLoading: false });
         } else {
           const isAdm = typeof window !== 'undefined' && localStorage.getItem('sahod_admin_session') === 'true';
-          setState({ user: isAdm ? MOCK_USER : null, isLoading: false });
+          setState({ user: isAdm ? getActiveMockUser() : null, isLoading: false });
         }
       });
 
@@ -77,7 +94,7 @@ export function useAuth() {
       };
     } else {
       // Supabase not configured: default to Admin
-      setState({ user: adminSession === 'false' ? null : MOCK_USER, isLoading: false });
+      setState({ user: adminSession === 'false' ? null : getActiveMockUser(), isLoading: false });
     }
   }, []);
 
@@ -92,6 +109,7 @@ export function loginWithRedirect({ redirectUrl } = {}) {
 export async function logout() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('sahod_admin_session');
+    localStorage.removeItem('sahod_demo_email');
     localStorage.setItem('sahod_logged_out', 'true');
   }
   try {

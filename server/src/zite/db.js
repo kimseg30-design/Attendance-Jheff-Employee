@@ -220,17 +220,45 @@ export const zite = {
           if (filters.email) users = users.filter((u) => u.email?.toLowerCase() === String(filters.email).toLowerCase());
           users.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
           return { records: users.slice(0, limit), total: users.length, hasMore: users.length > limit };
-        } catch (e) {
-          console.warn('[db] Fallback to in-memory for auth.findAllUsers:', e.message);
+        } catch {
+          // Admin listUsers API requires service_role key; fallback to app user records
         }
       }
-      const users = [
-        { id: 'usr_admin', email: 'kimsegarra4@gmail.com', name: 'Kim Segarra', firstName: 'Kim', lastName: 'Segarra', image: null },
+
+      // Collect known users from userRoles, default admins, and invites
+      const rolesRes = await zite.userRoles.findAll({ limit: 2000 }).catch(() => ({ records: [] }));
+      const userMap = new Map();
+
+      // Seed default accounts
+      const defaults = [
+        { id: 'usr_admin', email: 'kimsegarra410@gmail.com', name: 'Kim Segarra', firstName: 'Kim', lastName: 'Segarra', image: null },
+        { id: 'usr_admin_alt', email: 'kimsegarra4@gmail.com', name: 'Kim Segarra (4)', firstName: 'Kim', lastName: 'Segarra', image: null },
         { id: 'usr_admin_orig', email: 'kimsegarra516@gmail.com', name: 'Kim Segarra (Orig)', firstName: 'Kim', lastName: 'Segarra', image: null },
       ];
-      let filtered = users;
-      if (filters.email) filtered = filtered.filter((u) => u.email?.toLowerCase() === String(filters.email).toLowerCase());
-      return { records: filtered.slice(0, limit), total: filtered.length, hasMore: filtered.length > limit };
+      for (const d of defaults) userMap.set(d.email.toLowerCase(), d);
+
+      // Add users from userRoles
+      for (const r of rolesRes.records || []) {
+        const email = (r.label || '').trim().toLowerCase();
+        const rUser = Array.isArray(r.user) ? r.user[0] : r.user;
+        if (email && !userMap.has(email)) {
+          const namePart = email.split('@')[0];
+          userMap.set(email, {
+            id: rUser || `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}`,
+            email,
+            name: namePart,
+            firstName: namePart,
+            lastName: '',
+            image: null,
+          });
+        }
+      }
+
+      let list = Array.from(userMap.values());
+      if (filters.email) {
+        list = list.filter((u) => u.email?.toLowerCase() === String(filters.email).toLowerCase());
+      }
+      return { records: list.slice(0, limit), total: list.length, hasMore: list.length > limit };
     },
   },
   async sql({ query }) {

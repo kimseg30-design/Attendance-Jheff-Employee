@@ -16,21 +16,31 @@ export default createEndpoint({
     outputSchema: z.object({ success: z.boolean() }),
     execute: withLog('setUserRole', async ({ input, context }) => {
         await requireAdmin(context.user);
+        const email = input.email.trim().toLowerCase();
         if (input.role !== 'Admin') {
-            const admins = await zite.userRoles.findAll({ filters: { role: 'Admin' }, limit: 2 });
-            if (admins.records.length <= 1 && admins.records.some((a) => (Array.isArray(a.user) ? a.user[0] : a.user) === input.userId)) {
+            const admins = await zite.userRoles.findAll({ filters: { role: 'Admin' }, limit: 5 });
+            const isUserAdmin = admins.records.some((a) => {
+                const aUser = Array.isArray(a.user) ? a.user[0] : a.user;
+                return aUser === input.userId || (a.label && a.label.toLowerCase() === email);
+            });
+            if (admins.records.length <= 1 && isUserAdmin) {
                 throw new ZiteError({ code: 'BAD_REQUEST', message: 'Cannot demote last admin', userFacingMessage: 'There must be at least one admin.' });
             }
         }
         if (input.role === 'None') {
-            const row = await zite.userRoles.findOne({ filters: { user: input.userId } });
-            if (row)
+            const row = (await zite.userRoles.findOne({ filters: { user: input.userId } }))
+                     || (await zite.userRoles.findOne({ filters: { label: email } }));
+            if (row) {
                 await zite.userRoles.delete({ id: row.id });
+            }
         }
         else {
             const permissions = input.role === 'Editor' ? [...new Set(input.permissions ?? [])] : [];
             const storedRole = input.role === 'Editor' ? `Editor|${permissions.join(',')}` : input.role;
-            await zite.userRoles.bulkCreate({ records: [{ label: input.email, user: input.userId, role: storedRole }], matchOn: ['user'] });
+            await zite.userRoles.bulkCreate({
+                records: [{ label: email, user: input.userId, role: storedRole }],
+                matchOn: ['user'],
+            });
         }
         return { success: true };
     }),

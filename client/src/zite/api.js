@@ -3,6 +3,8 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 async function call(name, input) {
   let token = 'demo-token';
+  const headers = { 'Content-Type': 'application/json' };
+
   if (isSupabaseConfigured) {
     try {
       const { data } = await supabase.auth.getSession();
@@ -13,9 +15,17 @@ async function call(name, input) {
       // fallback to demo token
     }
   }
+
+  headers['Authorization'] = `Bearer ${token}`;
+
+  if (token === 'demo-token' && typeof window !== 'undefined') {
+    const demoEmail = localStorage.getItem('sahod_demo_email') || 'kimsegarra410@gmail.com';
+    headers['X-User-Email'] = demoEmail;
+  }
+
   const res = await fetch(`/api/${name}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers,
     body: JSON.stringify(input ?? {}),
   });
   const body = await res.json().catch(() => ({}));

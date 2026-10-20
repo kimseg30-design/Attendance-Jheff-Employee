@@ -8,6 +8,7 @@ import { Checkbox } from '@/shared/ui/checkbox';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Card } from '@/shared/ui/card';
 import { Badge } from '@/shared/ui/badge';
+import { Button } from '@/shared/ui/button';
 import PageHeader from '../components/PageHeader';
 import AddUserDialog from '../components/AddUserDialog';
 import PendingInvites from '../components/PendingInvites';
@@ -61,6 +62,23 @@ export default function UsersPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="truncate font-medium">{u.name}{u.id === user?.id && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}</div>
                   <Badge variant={u.role === 'Admin' ? 'default' : 'secondary'}>{u.role}</Badge>
+                  {u.email !== user?.email && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] font-normal"
+                      onClick={() => {
+                        localStorage.setItem('sahod_demo_email', u.email);
+                        localStorage.setItem('sahod_admin_session', 'true');
+                        qc.invalidateQueries();
+                        window.location.reload();
+                      }}
+                      title="Test how the application looks and functions with this user's role"
+                    >
+                      Simulate view
+                    </Button>
+                  )}
                 </div>
                 <div className="truncate text-sm text-muted-foreground">{u.email}</div>
               </div>

@@ -24,10 +24,26 @@ export default createEndpoint({
             zite.auth.findAllUsers({ appIds: ['cfalkekpn2'], sort: [{ field: 'email', direction: 'asc' }], limit: 500 }),
             zite.userRoles.findAll({ limit: 2000 }),
         ]);
-        const roleOf = new Map(roles.records.map((r) => [Array.isArray(r.user) ? r.user[0] : r.user, parseRole(r.role)]));
+
+        const roleOfId = new Map(roles.records.map((r) => [Array.isArray(r.user) ? r.user[0] : r.user, parseRole(r.role)]));
+        const roleOfEmail = new Map(roles.records.filter((r) => r.label).map((r) => [r.label.trim().toLowerCase(), parseRole(r.role)]));
+
+        const allUsers = [...users.records];
+        for (const r of roles.records) {
+            const roleEmail = (r.label || '').trim().toLowerCase();
+            const roleUserId = Array.isArray(r.user) ? r.user[0] : r.user;
+            if (!allUsers.some((u) => u.id === roleUserId || (roleEmail && u.email?.toLowerCase() === roleEmail))) {
+                allUsers.push({
+                    id: roleUserId || `usr_${roleEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
+                    name: roleEmail ? roleEmail.split('@')[0] : 'User',
+                    email: roleEmail || 'user@example.com',
+                });
+            }
+        }
+
         return {
-            users: users.records.map((u) => {
-                const access = roleOf.get(u.id) ?? { role: 'None', permissions: [] };
+            users: allUsers.map((u) => {
+                const access = roleOfId.get(u.id) ?? roleOfEmail.get(u.email?.trim().toLowerCase()) ?? { role: 'None', permissions: [] };
                 return { id: u.id, name: u.name || u.email, email: u.email, role: access.role, permissions: access.permissions };
             }),
         };

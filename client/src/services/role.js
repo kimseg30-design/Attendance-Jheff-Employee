@@ -1,28 +1,50 @@
 import { useQuery } from '@tanstack/react-query';
 import { getMyRole } from '@/zite/api';
-const DEFAULT_ADMIN_EMAILS = ['kimsegarra4@gmail.com', 'kimsegarra516@gmail.com'];
+import { useAuth } from '@/zite/auth';
 
-export function useRole(user) {
-    const isDefaultAdmin = Boolean(user?.email && DEFAULT_ADMIN_EMAILS.includes(user.email.trim().toLowerCase()));
-    const hasPreApprovedAdminSession = typeof window !== 'undefined'
-        && window.localStorage.getItem('sahod_admin_session') === 'true';
+export function useRole(userProp) {
+    const auth = useAuth();
+    const user = userProp || auth.user;
+
     const { data, isLoading } = useQuery({
-        queryKey: ['myRole', user?.id, isDefaultAdmin, hasPreApprovedAdminSession],
-        queryFn: () => isDefaultAdmin || hasPreApprovedAdminSession
-            ? { role: 'Admin', permissions: [] }
-            : getMyRole({}),
-        enabled: Boolean(user),
-        staleTime: 5 * 60_000,
+        queryKey: ['myRole', user?.id, user?.email],
+        queryFn: async () => {
+            try {
+                return await getMyRole({});
+            } catch (err) {
+                console.warn('[useRole] getMyRole error:', err);
+                return { role: 'None', permissions: [] };
+            }
+        },
+        enabled: Boolean(user || !auth.isLoading),
+        staleTime: 10_000,
+        refetchOnWindowFocus: true,
     });
-    const role = isDefaultAdmin || hasPreApprovedAdminSession ? 'Admin' : (data?.role ?? 'None');
+
+    const role = data?.role ?? 'None';
     const permissions = data?.permissions ?? [];
+
     return {
         role,
         permissions,
         isAdmin: role === 'Admin',
+        isViewer: role === 'Viewer',
         isEditor: role === 'Editor',
-        canEditTable: (table) => role === 'Admin' || (role === 'Editor' && (table === 'attendance' ? permissions.includes('attendance') : table === 'cashAdvances' ? permissions.includes('cashAdvances') : false)),
-        hasModule: (permission) => role === 'Admin' || role === 'Viewer' || (role === 'Editor' && permissions.includes(permission)),
-        isLoading,
+        canEditTable: (table) => {
+            if (role === 'Admin') return true;
+            if (role === 'Viewer') return false;
+            if (role === 'Editor') {
+                if (table === 'attendance') return permissions.includes('attendance');
+                if (table === 'cashAdvances') return permissions.includes('cashAdvances');
+            }
+            return false;
+        },
+        hasModule: (permission) => {
+            if (role === 'Admin') return true;
+            if (role === 'Viewer') return true;
+            if (role === 'Editor') return permissions.includes(permission);
+            return false;
+        },
+        isLoading: auth.isLoading || isLoading,
     };
 }

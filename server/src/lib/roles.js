@@ -8,35 +8,50 @@ function decodeRole(raw) {
     const valid = encoded.split(',').filter((p) => p === 'attendance' || p === 'cashAdvances');
     return { role, permissions: role === 'Editor' ? [...new Set(valid)] : [] };
 }
-// Accounts that are always Admin, regardless of their stored role.
-const DEFAULT_ADMIN_EMAILS = new Set(['kimsegarra4@gmail.com', 'kimsegarra516@gmail.com']);
+// Accounts that are default initial Admin if no role is stored in DB
+const DEFAULT_ADMIN_EMAILS = new Set(['kimsegarra410@gmail.com', 'kimsegarra4@gmail.com', 'kimsegarra516@gmail.com']);
 function isDefaultAdmin(user) {
     return Boolean(user?.email && DEFAULT_ADMIN_EMAILS.has(user.email.trim().toLowerCase()));
 }
 export async function getRole(user) {
     if (!user?.email) return 'None';
-    if (isDefaultAdmin(user))
-        return 'Admin';
-    const mine = await zite.userRoles.findOne({ filters: { user: user.id } });
-    if (!mine) {
-        // First sign-in of an invited user: turn the invite into their role.
-        const invite = await zite.appInvites.findOne({ filters: { email: user.email.trim().toLowerCase() } });
-        if (invite?.role) {
-            await zite.userRoles.bulkCreate({ records: [{ label: user.email, user: user.id, role: invite.role }], matchOn: ['user'] });
-            await zite.appInvites.delete({ id: invite.id });
-            return decodeRole(invite.role).role;
-        }
-        // Auto-grant Admin to the initial user or owner
-        const allRoles = await zite.userRoles.findAll({ limit: 5 });
-        if (!allRoles.records || allRoles.records.length === 0) {
-            await zite.userRoles.bulkCreate({ records: [{ label: user.email, user: user.id, role: 'Admin' }], matchOn: ['user'] });
-            return 'Admin';
-        }
+    const email = user.email.trim().toLowerCase();
+
+    // 1. Explicit assigned role stored in DB (by user ID or by email label)
+    const mine = (await zite.userRoles.findOne({ filters: { user: user.id } }))
+              || (await zite.userRoles.findOne({ filters: { label: email } }));
+    if (mine?.role) {
+        return decodeRole(mine.role).role;
     }
-    return decodeRole(mine?.role).role;
+
+    // 2. First sign-in of an invited user: turn the invite into their role
+    const invite = await zite.appInvites.findOne({ filters: { email } });
+    if (invite?.role) {
+        await zite.userRoles.bulkCreate({ records: [{ label: email, user: user.id, role: invite.role }], matchOn: ['user'] });
+        await zite.appInvites.delete({ id: invite.id });
+        return decodeRole(invite.role).role;
+    }
+
+    // 3. If default admin email, assign Admin role
+    if (isDefaultAdmin(user)) {
+        await zite.userRoles.bulkCreate({ records: [{ label: email, user: user.id, role: 'Admin' }], matchOn: ['user'] });
+        return 'Admin';
+    }
+
+    // 4. Auto-grant Admin to the initial user if table is empty
+    const allRoles = await zite.userRoles.findAll({ limit: 5 });
+    if (!allRoles.records || allRoles.records.length === 0) {
+        await zite.userRoles.bulkCreate({ records: [{ label: email, user: user.id, role: 'Admin' }], matchOn: ['user'] });
+        return 'Admin';
+    }
+
+    return 'None';
 }
 export async function getPermissions(user) {
-    const mine = await zite.userRoles.findOne({ filters: { user: user.id } });
+    if (!user?.email) return [];
+    const email = user.email.trim().toLowerCase();
+    const mine = (await zite.userRoles.findOne({ filters: { user: user.id } }))
+              || (await zite.userRoles.findOne({ filters: { label: email } }));
     return decodeRole(mine?.role).permissions;
 }
 function noSession() {

@@ -14,10 +14,11 @@ app.use(express.json({ limit: '5mb' }));
 async function getUser(req) {
   const token = (req.headers.authorization || '').replace(/^Bearer /, '');
   if (!token) return undefined;
-  if (token === 'demo-token' || token === 'mock-token') {
-    return { id: 'usr_admin', email: 'kimsegarra4@gmail.com', firstName: 'Kim', lastName: 'Segarra' };
-  }
-  if (admin?.auth) {
+
+  const headerEmail = req.headers['x-user-email'];
+  const headerId = req.headers['x-user-id'];
+
+  if (admin?.auth && token !== 'demo-token' && token !== 'mock-token') {
     try {
       const { data, error } = await admin.auth.getUser(token);
       if (!error && data?.user) {
@@ -30,7 +31,11 @@ async function getUser(req) {
       // ignore
     }
   }
-  return { id: 'usr_admin', email: 'kimsegarra4@gmail.com', firstName: 'Kim', lastName: 'Segarra' };
+
+  const email = (headerEmail || 'kimsegarra410@gmail.com').trim().toLowerCase();
+  const id = headerId || (email === 'kimsegarra410@gmail.com' ? 'usr_admin' : `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
+  const namePart = email.split('@')[0];
+  return { id, email, firstName: namePart, lastName: '' };
 }
 
 // Health check endpoint

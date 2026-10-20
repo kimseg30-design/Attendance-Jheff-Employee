@@ -221,7 +221,7 @@ export default function LoginPage() {
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-primary">Pre-approved Administrator</span>
-              <span className="bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">kimsegarra4@gmail.com</span>
+              <span className="bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">kimsegarra410@gmail.com</span>
             </div>
             <Button
               type="button"

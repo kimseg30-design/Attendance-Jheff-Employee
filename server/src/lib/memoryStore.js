@@ -289,7 +289,8 @@ const initialSfPayments = [
 ];
 
 const initialUserRoles = [
-  { id: crypto.randomUUID(), user: 'usr_admin', label: 'kimsegarra4@gmail.com', role: 'Admin', createdAt: new Date().toISOString() },
+  { id: crypto.randomUUID(), user: 'usr_admin', label: 'kimsegarra410@gmail.com', role: 'Admin', createdAt: new Date().toISOString() },
+  { id: crypto.randomUUID(), user: 'usr_admin_alt', label: 'kimsegarra4@gmail.com', role: 'Admin', createdAt: new Date().toISOString() },
   { id: crypto.randomUUID(), user: 'usr_admin_orig', label: 'kimsegarra516@gmail.com', role: 'Admin', createdAt: new Date().toISOString() },
 ];
 
