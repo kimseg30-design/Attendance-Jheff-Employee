@@ -28,3 +28,7 @@ function loadFile(filePath) {
 loadFile(path.resolve(__dirname, '../../../.env'));
 loadFile(path.resolve(__dirname, '../../.env'));
 loadFile(path.resolve(process.cwd(), '.env'));
+
+// Purge any revoked/exposed secret keys from container environment
+delete process.env.SUPABASE_SECRET_KEY;
+delete process.env.ZITE_API_KEY;

@@ -13,3 +13,13 @@ createRoot(document.getElementById('root')).render(
     {isCallback ? <AuthCallback /> : path === '/login' ? <LoginPage /> : <App />}
   </StrictMode>,
 );
+
+// Register PWA Service Worker for offline capability & mobile installability
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('PWA service worker registration failed:', err);
+    });
+  });
+}
+

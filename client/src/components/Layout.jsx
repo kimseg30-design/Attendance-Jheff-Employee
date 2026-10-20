@@ -8,6 +8,7 @@ import { cn } from '@/shared/lib/utils';
 import { useRole } from '../services/role';
 import { logout } from '@/zite/auth';
 import { LogOut } from 'lucide-react';
+import { PWAInstallButton } from './PWAInstallButton';
 const NAV = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/attendance', label: 'Attendance', icon: CalendarClock },
@@ -87,7 +88,8 @@ export default function Layout() {
         <SheetContent side="left" className="flex h-full w-60 flex-col border-none bg-sidebar p-0 text-sidebar-foreground">
           <Brand />
           <Nav onNavigate={() => setMobile(false)}/>
-          <div className="border-t border-sidebar-border p-3">
+          <div className="border-t border-sidebar-border p-3 space-y-2">
+            <PWAInstallButton className="w-full justify-start bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90" />
             <Button variant="outline" className="h-11 w-full justify-start border-sidebar-border bg-sidebar-accent/40 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={() => void logout()} aria-label="Log out">
               <LogOut className="mr-2 h-4 w-4"/>Log out
             </Button>
@@ -99,6 +101,9 @@ export default function Layout() {
           <div className="flex min-w-0 items-center">
             <Button variant="ghost" size="icon" className="shrink-0 md:hidden" onClick={() => setMobile(true)} aria-label="Open navigation"><Menu className="h-5 w-5"/></Button>
             <span className="ml-2 truncate font-bold md:ml-0">Sahod</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <PWAInstallButton size="sm" variant="outline" className="h-8 text-xs font-semibold" />
           </div>
         </header>
         <main className="mx-auto max-w-[1400px] p-4 md:p-8"><Outlet /></main>
