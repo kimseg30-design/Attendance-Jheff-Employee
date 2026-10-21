@@ -4,6 +4,7 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { loginAsAdmin } from './auth';
 import { ShieldCheck, Mail, Lock, AlertCircle, CheckCircle2, ExternalLink, Copy, Check } from 'lucide-react';
 
 export default function LoginPage() {
@@ -42,7 +43,7 @@ export default function LoginPage() {
     setMessage('');
 
     if (!isSupabaseConfigured) {
-      setError('Authentication service is currently unavailable. Please check your credentials or network connection.');
+      setError('Supabase is not configured yet. Click "Sign in as Kim Segarra" above to use local sandbox mode.');
       return;
     }
 
@@ -84,7 +85,7 @@ export default function LoginPage() {
     setMessage('');
 
     if (!isSupabaseConfigured) {
-      setError('Authentication service is currently unavailable. Please check your credentials or network connection.');
+      setError('Supabase is not configured yet. Click "Sign in as Kim Segarra" above to use local sandbox mode.');
       return;
     }
 
@@ -112,7 +113,7 @@ export default function LoginPage() {
     setMessage('');
 
     if (!isSupabaseConfigured) {
-      setError('Authentication service is currently unavailable. Please check your credentials or network connection.');
+      setError('Supabase is not configured yet. Click "Sign in as Kim Segarra" above to use local sandbox mode.');
       return;
     }
 
@@ -161,7 +162,7 @@ export default function LoginPage() {
         }
       }
     } catch (err) {
-      setError(err.message || 'Google authentication error. Please try again or use email sign-in.');
+      setError(err.message || 'Google authentication error. Try signing in as Administrator below.');
     } finally {
       setLoading(false);
     }
@@ -215,6 +216,21 @@ export default function LoginPage() {
             </svg>
             Continue with Google
           </Button>
+
+          {/* Instant Admin Login Shortcut */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-primary">Pre-approved Administrator</span>
+              <span className="bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">kimsegarra410@gmail.com</span>
+            </div>
+            <Button
+              type="button"
+              className="w-full h-9 font-medium shadow-sm"
+              onClick={loginAsAdmin}
+            >
+              Sign in as Kim Segarra
+            </Button>
+          </div>
         </div>
 
         <div className="relative">
@@ -406,14 +422,16 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <DialogFooter className="flex sm:justify-end items-center pt-2">
+          <DialogFooter className="flex sm:justify-between items-center pt-2">
             <Button
               type="button"
-              variant="outline"
               className="w-full sm:w-auto"
-              onClick={() => setGoogleModalOpen(false)}
+              onClick={() => {
+                setGoogleModalOpen(false);
+                loginAsAdmin();
+              }}
             >
-              Close
+              Sign In as Admin (Kim Segarra)
             </Button>
           </DialogFooter>
         </DialogContent>
