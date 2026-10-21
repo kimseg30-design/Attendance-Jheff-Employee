@@ -9,6 +9,7 @@ import { useRole } from '../services/role';
 import { logout } from '@/zite/auth';
 import { LogOut } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
+import RoleSwitcher from './RoleSwitcher';
 const NAV = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/attendance', label: 'Attendance', icon: CalendarClock },
@@ -103,23 +104,7 @@ export default function Layout() {
             <span className="ml-2 truncate font-bold md:ml-0">Sahod</span>
           </div>
           <div className="flex items-center gap-2">
-            {typeof window !== 'undefined' && localStorage.getItem('sahod_demo_email') && localStorage.getItem('sahod_demo_email') !== 'kimsegarra410@gmail.com' && (
-              <div className="flex items-center gap-1.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 px-3 py-1 text-xs">
-                <span>Testing as <b>{localStorage.getItem('sahod_demo_email')}</b></span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-5 px-1.5 text-[11px] font-semibold text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900"
-                  onClick={() => {
-                    localStorage.removeItem('sahod_demo_email');
-                    localStorage.setItem('sahod_admin_session', 'true');
-                    window.location.reload();
-                  }}
-                >
-                  Exit test
-                </Button>
-              </div>
-            )}
+            <RoleSwitcher />
             <PWAInstallButton size="sm" variant="outline" className="h-8 text-xs font-semibold" />
           </div>
         </header>

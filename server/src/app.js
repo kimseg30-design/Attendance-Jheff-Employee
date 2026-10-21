@@ -34,7 +34,13 @@ async function getUser(req) {
   }
 
   const email = (headerEmail || 'kimsegarra410@gmail.com').trim().toLowerCase();
-  const id = headerId || (email === 'kimsegarra410@gmail.com' ? 'usr_admin' : `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
+  let id = headerId;
+  if (!id) {
+    if (email === 'kimsegarra410@gmail.com') id = 'usr_admin';
+    else if (email === 'kimsegarra4@gmail.com') id = 'usr_admin_alt';
+    else if (email === 'kimsegarra516@gmail.com') id = 'usr_admin_orig';
+    else id = `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  }
   const namePart = email.split('@')[0];
   return { id, email, firstName: namePart, lastName: '', simulatedRole: simulatedRole || null };
 }

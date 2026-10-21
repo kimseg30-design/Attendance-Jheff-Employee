@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createEndpoint } from '../zite/backend.js';
 import { zite } from '../zite/db.js';
-import { requireAdmin } from '../lib/roles.js';
+import { isDefaultAdmin, requireAdmin } from '../lib/roles.js';
 import { withLog } from '../lib/guard.js';
 function parseRole(raw) {
     const [base, encoded = ''] = String(raw ?? 'None').split('|', 2);
@@ -25,27 +25,42 @@ export default createEndpoint({
             zite.userRoles.findAll({ limit: 2000 }),
         ]);
 
+        const isDummy = (email) => {
+            if (!email) return false;
+            const em = email.trim().toLowerCase();
+            return em.endsWith('@example.com') || em.includes('dummy') || em.includes('usr_viewer') || em.includes('usr_editor');
+        };
+
         const roleOfId = new Map(roles.records.map((r) => [Array.isArray(r.user) ? r.user[0] : r.user, parseRole(r.role)]));
         const roleOfEmail = new Map(roles.records.filter((r) => r.label).map((r) => [r.label.trim().toLowerCase(), parseRole(r.role)]));
 
-        const allUsers = [...users.records];
+        const allUsers = users.records.filter((u) => !isDummy(u.email));
         for (const r of roles.records) {
             const roleEmail = (r.label || '').trim().toLowerCase();
             const roleUserId = Array.isArray(r.user) ? r.user[0] : r.user;
+            if (isDummy(roleEmail)) continue;
             if (!allUsers.some((u) => u.id === roleUserId || (roleEmail && u.email?.toLowerCase() === roleEmail))) {
                 allUsers.push({
                     id: roleUserId || `usr_${roleEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
                     name: roleEmail ? roleEmail.split('@')[0] : 'User',
-                    email: roleEmail || 'user@example.com',
+                    email: roleEmail || '',
                 });
             }
         }
 
-        return {
-            users: allUsers.map((u) => {
+        const mapped = allUsers
+            .filter((u) => !isDummy(u.email))
+            .map((u) => {
+                if (isDefaultAdmin(u)) {
+                    return { id: u.id, name: u.name || u.email, email: u.email, role: 'Admin', permissions: [] };
+                }
                 const access = roleOfId.get(u.id) ?? roleOfEmail.get(u.email?.trim().toLowerCase()) ?? { role: 'None', permissions: [] };
                 return { id: u.id, name: u.name || u.email, email: u.email, role: access.role, permissions: access.permissions };
-            }),
+            })
+            .filter((u) => isDefaultAdmin(u) || u.role !== 'None');
+
+        return {
+            users: mapped,
         };
     }),
 });

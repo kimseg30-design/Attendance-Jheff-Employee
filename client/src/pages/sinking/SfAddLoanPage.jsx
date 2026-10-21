@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,6 +13,7 @@ import { DatePicker } from '@/shared/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import PageHeader from '../../components/PageHeader';
 import { useSf, useSfSave } from '../../services/sf';
+import { useRole } from '../../services/role';
 import { useNameMap } from '../../services/records';
 import { firstDueFor, phToday, PER_MONTH } from '../../lib/loanCalc';
 import { peso, fmtDate, toISODate } from '../../utils/format';
@@ -36,11 +37,16 @@ function Pick({ value, onChange, options }) {
     <SelectContent>{options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select>;
 }
 export default function SfAddLoanPage() {
+    const { isAdmin, isLoading } = useRole();
     const { settings, loans } = useSf();
     const employees = useNameMap('employees');
     const [employeePick, setEmployeePick] = useState('none');
     const save = useSfSave();
     const nav = useNavigate();
+
+    if (!isLoading && !isAdmin) {
+        return <Navigate to="/sinking-fund/loans" replace />;
+    }
     const f = useForm({ resolver: zodResolver(schema), mode: 'onChange', defaultValues: {
             borrowerName: '', loanGroup: '1st Group', loanType: 'New Loan', principal: 0, monthlyRate: 5, termMonths: 1,
             frequency: 'Monthly', penaltyRate: 2, graceDays: 3, startDate: phToday(),

@@ -17,14 +17,33 @@ const MOCK_USER = {
 };
 
 function getActiveMockUser() {
-  const email = (typeof window !== 'undefined' && localStorage.getItem('sahod_demo_email')) || DEFAULT_ADMIN_EMAIL;
-  const namePart = email.split('@')[0];
+  let email = DEFAULT_ADMIN_EMAIL;
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('sahod_demo_email');
+    if (stored && (stored.endsWith('@example.com') || stored.includes('dummy'))) {
+      localStorage.removeItem('sahod_demo_email');
+    } else if (stored) {
+      email = stored;
+    }
+  }
+  let id = 'usr_admin';
+  let name = 'Kim Segarra';
+  if (email === 'kimsegarra4@gmail.com') {
+    id = 'usr_admin_alt';
+    name = 'Kim Segarra (4)';
+  } else if (email === 'kimsegarra516@gmail.com') {
+    id = 'usr_admin_orig';
+    name = 'Kim Segarra (Orig)';
+  } else if (email !== DEFAULT_ADMIN_EMAIL) {
+    id = `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    name = email.split('@')[0];
+  }
   return {
     ...MOCK_USER,
-    id: email === DEFAULT_ADMIN_EMAIL ? 'usr_admin' : `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}`,
+    id,
     email,
-    name: namePart,
-    firstName: namePart,
+    name,
+    firstName: name.split(' ')[0],
   };
 }
 

@@ -21,18 +21,19 @@ export async function getRole(user) {
     if (user.simulatedRole) {
         return decodeRole(user.simulatedRole).role;
     }
+
+    // 1. Primary system administrators are guaranteed Admin to prevent lockouts
+    if (isDefaultAdmin(user)) {
+        return 'Admin';
+    }
+
     const email = (user.email || '').trim().toLowerCase();
 
-    // 1. Explicit assigned role stored in DB (by user ID or by email label)
+    // 2. Explicit assigned role stored in DB (by user ID or by email label)
     const mine = (await zite.userRoles.findOne({ filters: { user: user.id } }))
               || (email ? await zite.userRoles.findOne({ filters: { label: email } }) : null);
     if (mine?.role) {
         return decodeRole(mine.role).role;
-    }
-
-    // 2. Primary system administrators are guaranteed Admin to prevent lockouts
-    if (isDefaultAdmin(user)) {
-        return 'Admin';
     }
 
     // 3. First sign-in of an invited user: turn the invite into their role
@@ -90,11 +91,12 @@ export async function requireTableAccess(user, table, action = 'read') {
     const role = await getRole(user);
     if (role === 'Admin' || (role === 'Viewer' && action === 'read'))
         return;
+    const norm = table === 'cash_advances' ? 'cashAdvances' : table;
     if (role === 'Editor') {
         const permissions = await getPermissions(user);
-        const allowedTable = table === 'attendance' ? permissions.includes('attendance')
-            : table === 'cashAdvances' ? permissions.includes('cashAdvances')
-                : table === 'employees' && action === 'read' && permissions.some((p) => p === 'attendance' || p === 'cashAdvances');
+        const allowedTable = norm === 'attendance' ? permissions.includes('attendance')
+            : norm === 'cashAdvances' ? permissions.includes('cashAdvances')
+                : norm === 'employees' && action === 'read' && permissions.some((p) => p === 'attendance' || p === 'cashAdvances');
         if (allowedTable)
             return;
     }

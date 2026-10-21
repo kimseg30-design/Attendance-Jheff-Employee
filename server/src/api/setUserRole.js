@@ -19,7 +19,9 @@ export default createEndpoint({
         const email = input.email.trim().toLowerCase();
 
         // Protect primary admin accounts from being demoted
-        const isPrimaryAdmin = input.userId === 'usr_admin' || email === 'kimsegarra410@gmail.com' || (context.user && (input.userId === context.user.id || email === context.user.email?.toLowerCase()));
+        const PRIMARY_ADMIN_EMAILS = ['kimsegarra410@gmail.com', 'kimsegarra4@gmail.com', 'kimsegarra516@gmail.com'];
+        const PRIMARY_ADMIN_IDS = ['usr_admin', 'usr_admin_alt', 'usr_admin_orig'];
+        const isPrimaryAdmin = PRIMARY_ADMIN_IDS.includes(input.userId) || PRIMARY_ADMIN_EMAILS.includes(email) || (context.user && (input.userId === context.user.id || email === context.user.email?.toLowerCase()));
         if (isPrimaryAdmin && input.role !== 'Admin') {
             throw new ZiteError({
                 code: 'BAD_REQUEST',

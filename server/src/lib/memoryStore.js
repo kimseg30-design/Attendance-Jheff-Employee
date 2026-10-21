@@ -292,9 +292,6 @@ const initialUserRoles = [
   { id: crypto.randomUUID(), user: 'usr_admin', label: 'kimsegarra410@gmail.com', role: 'Admin', createdAt: new Date().toISOString() },
   { id: crypto.randomUUID(), user: 'usr_admin_alt', label: 'kimsegarra4@gmail.com', role: 'Admin', createdAt: new Date().toISOString() },
   { id: crypto.randomUUID(), user: 'usr_admin_orig', label: 'kimsegarra516@gmail.com', role: 'Admin', createdAt: new Date().toISOString() },
-  { id: crypto.randomUUID(), user: 'usr_viewer_01', label: 'vicente.viewer@example.com', role: 'Viewer', createdAt: new Date().toISOString() },
-  { id: crypto.randomUUID(), user: 'usr_editor_att', label: 'elena.attendance@example.com', role: 'Editor|attendance', createdAt: new Date().toISOString() },
-  { id: crypto.randomUUID(), user: 'usr_editor_adv', label: 'carlo.advances@example.com', role: 'Editor|cashAdvances', createdAt: new Date().toISOString() },
 ];
 
 export const memoryDb = {

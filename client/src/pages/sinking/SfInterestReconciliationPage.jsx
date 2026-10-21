@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { AlertTriangle, Search } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -7,11 +7,17 @@ import { Badge } from '@/shared/ui/badge';
 import { Skeleton } from '@/shared/ui/skeleton';
 import PageHeader from '../../components/PageHeader';
 import { useSf } from '../../services/sf';
+import { useRole } from '../../services/role';
 import { reconcileHistoricalInterest } from '../../lib/interestReconciliation';
 import { peso, fmtDate } from '../../utils/format';
 export default function SfInterestReconciliationPage() {
+    const { isAdmin, isLoading: roleLoading } = useRole();
     const sf = useSf();
     const [q, setQ] = useState('');
+
+    if (!roleLoading && !isAdmin) {
+        return <Navigate to="/sinking-fund" replace />;
+    }
     const rows = useMemo(() => sf.loans.flatMap((loan) => {
         const current = sf.calcs.find((c) => String(c.loan.id) === String(loan.id));
         return reconcileHistoricalInterest(loan, sf.payments, sf.declarations).map((segment) => ({

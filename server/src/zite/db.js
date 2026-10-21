@@ -242,8 +242,9 @@ export const zite = {
       // Add users from userRoles
       for (const r of rolesRes.records || []) {
         const email = (r.label || '').trim().toLowerCase();
+        if (!email || email.endsWith('@example.com') || email.includes('dummy')) continue;
         const rUser = Array.isArray(r.user) ? r.user[0] : r.user;
-        if (email && !userMap.has(email)) {
+        if (!userMap.has(email)) {
           const namePart = email.split('@')[0];
           userMap.set(email, {
             id: rUser || `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}`,

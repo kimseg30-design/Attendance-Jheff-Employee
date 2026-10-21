@@ -18,9 +18,20 @@ async function call(name, input) {
 
   headers['Authorization'] = `Bearer ${token}`;
 
-  if (token === 'demo-token' && typeof window !== 'undefined') {
-    const demoEmail = localStorage.getItem('sahod_demo_email') || 'kimsegarra410@gmail.com';
-    headers['X-User-Email'] = demoEmail;
+  if (typeof window !== 'undefined') {
+    const simulatedRole = localStorage.getItem('sahod_simulated_role');
+    if (simulatedRole) {
+      headers['X-Simulated-Role'] = simulatedRole;
+    }
+    const demoEmail = localStorage.getItem('sahod_demo_email');
+    if (demoEmail && (demoEmail.endsWith('@example.com') || demoEmail.includes('dummy'))) {
+      localStorage.removeItem('sahod_demo_email');
+    } else if (demoEmail && demoEmail !== 'kimsegarra410@gmail.com') {
+      headers['Authorization'] = 'Bearer demo-token';
+      headers['X-User-Email'] = demoEmail;
+    } else if (token === 'demo-token') {
+      headers['X-User-Email'] = demoEmail || 'kimsegarra410@gmail.com';
+    }
   }
 
   const res = await fetch(`/api/${name}`, {
