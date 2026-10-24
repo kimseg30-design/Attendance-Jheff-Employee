@@ -46,6 +46,7 @@ async function call(name, input) {
 
 export const bulkLogAttendance = (input) => call('bulkLogAttendance', input);
 export const deleteRecord = (input) => call('deleteRecord', input);
+export const generateBirTaxReport = (input) => call('generateBirTaxReport', input);
 export const generatePayroll = (input) => call('generatePayroll', input);
 export const getDashboard = (input) => call('getDashboard', input);
 export const getMyRole = (input) => call('getMyRole', input);
@@ -67,4 +68,4 @@ export const sfGetData = (input) => call('sfGetData', input);
 export const sfSave = (input) => call('sfSave', input);
 export const syncDraftPayrollAttendance = (input) => call('syncDraftPayrollAttendance', input);
 
-export const api = { bulkLogAttendance, deleteRecord, generatePayroll, getDashboard, getMyRole, getSystemHealth, inviteUser, listInvites, listRecords, listUsers, releasePayslips, revokeInvite, saveRecord, setPayslipDeduction, setUserRole, sfClearData, sfDeclareBalance, sfDelete, sfGetAudit, sfGetData, sfSave, syncDraftPayrollAttendance };
+export const api = { bulkLogAttendance, deleteRecord, generateBirTaxReport, generatePayroll, getDashboard, getMyRole, getSystemHealth, inviteUser, listInvites, listRecords, listUsers, releasePayslips, revokeInvite, saveRecord, setPayslipDeduction, setUserRole, sfClearData, sfDeclareBalance, sfDelete, sfGetAudit, sfGetData, sfSave, syncDraftPayrollAttendance };

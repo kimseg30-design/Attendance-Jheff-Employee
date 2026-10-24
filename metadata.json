@@ -2,5 +2,6 @@
   "name": "PH Attendance & Payroll",
   "description": "Philippine attendance, payroll, cash advances, and sinking fund management system.",
   "permissions": [],
-  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

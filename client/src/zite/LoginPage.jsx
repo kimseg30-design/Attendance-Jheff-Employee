@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { loginAsAdmin } from './auth';
 import { ShieldCheck, Mail, Lock, AlertCircle, CheckCircle2, ExternalLink, Copy, Check } from 'lucide-react';
 
 export default function LoginPage() {
@@ -17,24 +16,67 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [googleModalOpen, setGoogleModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const popupRef = useRef(null);
 
   const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
   const callbackUrl = `${window.location.origin}/auth/callback`;
   const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || 'https://xurvumenaszahorrxhxf.supabase.co';
   const supabaseCallbackUrl = `${rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')}/auth/v1/callback`;
 
-  // Listen for popup OAuth success
+  // Listen for login completion (initial session, popup message, storage event, or active polling)
   useEffect(() => {
-    const handleMessage = async (event) => {
+    let active = true;
+
+    const navigateToApp = () => {
+      if (!active) return;
+      active = false;
+      try {
+        localStorage.removeItem('supabase_auth_success');
+      } catch {}
+      window.location.assign(redirect);
+    };
+
+    // 1. If already authenticated or restored
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session) {
+        navigateToApp();
+      }
+    });
+
+    // 2. Message sent from popup window dialog
+    const handleMessage = (event) => {
       if (event.data?.type === 'SUPABASE_OAUTH_SUCCESS') {
-        const { data } = await supabase.auth.getSession();
-        if (data?.session) {
-          window.location.assign(redirect);
-        }
+        navigateToApp();
       }
     };
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+
+    // 3. Storage event fallback (in case browser restricts postMessage from popup)
+    const handleStorage = (event) => {
+      if (event.key === 'supabase_auth_success') {
+        navigateToApp();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // 4. Polling while popup window dialog is active
+    const interval = setInterval(async () => {
+      if (!active) return;
+      if (popupRef.current && popupRef.current.closed) {
+        setLoading(false);
+      }
+      const { data } = await supabase.auth.getSession();
+      if (data?.session) {
+        navigateToApp();
+      }
+    }, 600);
+
+    return () => {
+      active = false;
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorage);
+      clearInterval(interval);
+    };
   }, [redirect]);
 
   const handlePasswordAuth = async (e) => {
@@ -43,7 +85,7 @@ export default function LoginPage() {
     setMessage('');
 
     if (!isSupabaseConfigured) {
-      setError('Supabase is not configured yet. Click "Sign in as Kim Segarra" above to use local sandbox mode.');
+      setError('Authentication service is currently unavailable. Please check your credentials or network connection.');
       return;
     }
 
@@ -85,7 +127,7 @@ export default function LoginPage() {
     setMessage('');
 
     if (!isSupabaseConfigured) {
-      setError('Supabase is not configured yet. Click "Sign in as Kim Segarra" above to use local sandbox mode.');
+      setError('Authentication service is currently unavailable. Please check your credentials or network connection.');
       return;
     }
 
@@ -113,14 +155,14 @@ export default function LoginPage() {
     setMessage('');
 
     if (!isSupabaseConfigured) {
-      setError('Supabase is not configured yet. Click "Sign in as Kim Segarra" above to use local sandbox mode.');
+      setError('Authentication service is currently unavailable. Please check your credentials or network connection.');
       return;
     }
 
     setLoading(true);
 
     try {
-      // 1. Request OAuth authorization URL with popup flow (skipBrowserRedirect: true)
+      // 1. Request OAuth authorization URL with skipBrowserRedirect: true to open the window dialog
       const { data, error: oauthErr } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -134,36 +176,41 @@ export default function LoginPage() {
       });
 
       if (oauthErr) {
-        // If Google provider is not yet enabled in Supabase console
         if (
           oauthErr.message?.toLowerCase().includes('not enabled') ||
           oauthErr.message?.toLowerCase().includes('unsupported provider')
         ) {
           setGoogleModalOpen(true);
+          setLoading(false);
           return;
         }
         throw oauthErr;
       }
 
       if (data?.url) {
-        // Open OAuth provider directly in popup window
-        const width = 600;
-        const height = 700;
+        // 2. Open centered window dialog
+        const width = 500;
+        const height = 650;
         const left = window.screenX + Math.max(0, (window.outerWidth - width) / 2);
         const top = window.screenY + Math.max(0, (window.outerHeight - height) / 2);
         const popup = window.open(
           data.url,
-          'google_auth_popup',
-          `width=${width},height=${height},left=${left},top=${top},status=no,resizable=yes`
+          'google_auth_window',
+          `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,status=no,resizable=yes`
         );
 
         if (!popup) {
-          setError('Popup was blocked by your browser. Please allow popups for this site to complete Google sign-in.');
+          setError('Sign-in window dialog was blocked. Please allow popups for this site.');
+          setLoading(false);
+        } else {
+          popupRef.current = popup;
+          popup.focus();
         }
+      } else {
+        setLoading(false);
       }
     } catch (err) {
-      setError(err.message || 'Google authentication error. Try signing in as Administrator below.');
-    } finally {
+      setError(err.message || 'Google authentication error. Please try again or use email sign-in.');
       setLoading(false);
     }
   };
@@ -216,21 +263,6 @@ export default function LoginPage() {
             </svg>
             Continue with Google
           </Button>
-
-          {/* Instant Admin Login Shortcut */}
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-primary">Pre-approved Administrator</span>
-              <span className="bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">kimsegarra410@gmail.com</span>
-            </div>
-            <Button
-              type="button"
-              className="w-full h-9 font-medium shadow-sm"
-              onClick={loginAsAdmin}
-            >
-              Sign in as Kim Segarra
-            </Button>
-          </div>
         </div>
 
         <div className="relative">
@@ -422,16 +454,14 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <DialogFooter className="flex sm:justify-between items-center pt-2">
+          <DialogFooter className="flex sm:justify-end items-center pt-2">
             <Button
               type="button"
+              variant="outline"
               className="w-full sm:w-auto"
-              onClick={() => {
-                setGoogleModalOpen(false);
-                loginAsAdmin();
-              }}
+              onClick={() => setGoogleModalOpen(false)}
             >
-              Sign In as Admin (Kim Segarra)
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

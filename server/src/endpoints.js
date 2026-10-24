@@ -1,5 +1,6 @@
 import bulkLogAttendance from './api/bulkLogAttendance.js';
 import deleteRecord from './api/deleteRecord.js';
+import generateBirTaxReport from './api/generateBirTaxReport.js';
 import generatePayroll from './api/generatePayroll.js';
 import getDashboard from './api/getDashboard.js';
 import getMyRole from './api/getMyRole.js';
@@ -24,6 +25,7 @@ import syncDraftPayrollAttendance from './api/syncDraftPayrollAttendance.js';
 export const endpoints = {
   bulkLogAttendance,
   deleteRecord,
+  generateBirTaxReport,
   generatePayroll,
   getDashboard,
   getMyRole,
