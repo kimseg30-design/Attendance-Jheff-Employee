@@ -32,7 +32,7 @@ function cleanConfigValue(val, fallback) {
 }
 
 const supabaseUrl = normalizeSupabaseUrl(cleanConfigValue(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, DEFAULT_SUPABASE_URL));
-const supabaseKey = cleanConfigValue(process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_PUBLISHABLE_KEY);
+const supabaseKey = cleanConfigValue(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_PUBLISHABLE_KEY);
 
 function isValidSupabaseConfig(url, key) {
   if (!url || !key) return false;

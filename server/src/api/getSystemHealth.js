@@ -3,7 +3,20 @@ import { createEndpoint } from '../zite/backend.js';
 import { zite } from '../zite/db.js';
 import { requireAdmin } from '../lib/roles.js';
 import { withLog } from '../lib/guard.js';
-const check = z.object({ status: z.enum(['ok', 'warning', 'error']), message: z.string() });
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const check = z.object({
+    status: z.enum(['ok', 'warning', 'error']),
+    message: z.string(),
+    code: z.string().optional(),
+    sqlFix: z.string().optional(),
+    sqlUrl: z.string().optional(),
+});
 export default createEndpoint({
     authenticated: true,
     description: 'Admin-only health check: database connection, security lock-down and recent failed actions',
@@ -17,7 +30,7 @@ export default createEndpoint({
     execute: withLog('getSystemHealth', async ({ context }) => {
         await requireAdmin(context.user, 'read');
         const rawUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://xurvumenaszahorrxhxf.supabase.co';
-        const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_0uYtc2gANKbcM2trdrO8zA_DINcfSiZ';
+        const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_0uYtc2gANKbcM2trdrO8zA_DINcfSiZ';
         const base = new URL(rawUrl).origin;
         let database;
         const started = Date.now();
@@ -26,12 +39,33 @@ export default createEndpoint({
         } else {
             try {
                 const res = await fetch(`${base}/rest/v1/departments?select=id&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, keepalive: true, signal: AbortSignal.timeout(3000) });
-                database = res.ok
-                    ? { status: 'ok', message: `Connected to Supabase (${Date.now() - started} ms)` }
-                    : { status: 'error', message: `Supabase responded with error ${res.status}` };
+                if (res.ok) {
+                    database = { status: 'ok', message: `Connected to Supabase (${Date.now() - started} ms)` };
+                } else {
+                    const errBody = await res.text().catch(() => '');
+                    const isPermissionDenied = res.status === 401 || res.status === 403 || errBody.includes('permission denied') || errBody.includes('42501');
+                    
+                    let sqlFixContent = '';
+                    try {
+                        const sqlPath = path.resolve(__dirname, '../../../supabase/grant_publishable_access.sql');
+                        if (fs.existsSync(sqlPath)) sqlFixContent = fs.readFileSync(sqlPath, 'utf8');
+                    } catch {}
+
+                    if (isPermissionDenied) {
+                        database = {
+                            status: 'error',
+                            code: 'PERMISSION_DENIED_401',
+                            message: `Supabase returned 401 Permission Denied for tables. The publishable key lacks SELECT/INSERT privileges. Run the grant script in your Supabase SQL Editor.`,
+                            sqlFix: sqlFixContent,
+                            sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new',
+                        };
+                    } else {
+                        database = { status: 'error', message: `Supabase responded with error ${res.status}: ${errBody.slice(0, 100)}` };
+                    }
+                }
             }
             catch {
-                database = { status: 'error', message: 'Could not reach Supabase' };
+                database = { status: 'error', message: 'Could not reach Supabase endpoint' };
             }
         }
         let security;

@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { getSystemHealth } from '@/zite/api';
-import { Activity, CheckCircle2, AlertTriangle, XCircle, RefreshCw } from 'lucide-react';
+import { Activity, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Copy, ExternalLink } from 'lucide-react';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Badge } from '@/shared/ui/badge';
+import { toast } from 'sonner';
+
 function CheckRow({ label, check }) {
     const Icon = check.status === 'ok' ? CheckCircle2 : check.status === 'warning' ? AlertTriangle : XCircle;
     const tone = check.status === 'ok' ? 'text-primary' : check.status === 'warning' ? 'text-amber-600' : 'text-destructive';
@@ -29,6 +31,57 @@ export default function SystemHealth() {
               <CheckRow label="Database connection" check={data.database}/>
               <CheckRow label="Security lock-down" check={data.security}/>
             </div>
+            {data.database?.sqlFix && (
+              <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <div className="font-semibold text-sm text-amber-900 dark:text-amber-200">
+                    Fix: Grant Table Access to Publishable Key (Postgres Error 42501)
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs bg-white dark:bg-background"
+                      onClick={() => {
+                        navigator.clipboard.writeText(data.database.sqlFix);
+                        toast.success('SQL migration script copied to clipboard!');
+                      }}
+                    >
+                      <Copy className="mr-1 h-3.5 w-3.5" />
+                      Copy SQL
+                    </Button>
+                    {data.database?.sqlUrl && (
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => window.open(data.database.sqlUrl, '_blank')}
+                      >
+                        <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                        Open Supabase SQL Editor
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-amber-800 dark:text-amber-300 mb-2">
+                  Your Supabase tables currently have Row Level Security or revoked privileges blocking the publishable (anon) API key.
+                  To fetch and sync data directly with your Supabase database:
+                </p>
+                <ol className="list-decimal list-inside text-xs text-amber-800 dark:text-amber-300 space-y-1 mb-3">
+                  <li>Click <b>Copy SQL</b> above.</li>
+                  <li>Click <b>Open Supabase SQL Editor</b> (or navigate to your Supabase project dashboard → SQL Editor).</li>
+                  <li>Paste the script and click <b>Run</b>.</li>
+                  <li>Return here and click <b>Re-check</b> — your database will connect and fetch all data instantly!</li>
+                </ol>
+                <details className="text-xs">
+                  <summary className="cursor-pointer font-medium text-amber-900 dark:text-amber-200 hover:underline">
+                    View SQL Script Preview
+                  </summary>
+                  <pre className="mt-2 max-h-48 overflow-auto rounded bg-slate-900 text-slate-100 p-3 text-[11px] font-mono whitespace-pre">
+                    {data.database.sqlFix}
+                  </pre>
+                </details>
+              </div>
+            )}
             <div className="mt-4 flex items-center justify-between">
               <div className="text-xs font-semibold uppercase text-muted-foreground">Last 10 failed or blocked actions</div>
               <Badge variant={data.failuresLast24h ? 'destructive' : 'secondary'}>{data.failuresLast24h} in the last 24 hours</Badge>

@@ -254,7 +254,7 @@ export async function request(path, init = {}) {
     }
 
     const rawUrl = normalizeSupabaseUrl(cleanConfigValue(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, DEFAULT_SUPABASE_URL));
-    const key = cleanConfigValue(process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_PUBLISHABLE_KEY);
+    const key = cleanConfigValue(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_PUBLISHABLE_KEY);
     const hasConfig = isValidSupabaseConfig(rawUrl, key);
 
     if (!hasConfig) {
@@ -271,7 +271,11 @@ export async function request(path, init = {}) {
         });
         const text = await res.text();
         if (!res.ok) {
-            console.warn(`[Supabase] Request ${method} ${path} failed (${res.status}), using mock fallback.`);
+            if (res.status === 401 || res.status === 403) {
+                console.warn(`[Supabase] Permission denied (${res.status}) on ${method} ${path}. Table access denied for API key. Run grant_publishable_access.sql in Supabase SQL editor.`);
+            } else {
+                console.warn(`[Supabase] Request ${method} ${path} failed (${res.status}), using mock fallback.`);
+            }
             return handleMemoryRequest(path, init);
         }
         const data = text ? JSON.parse(text) : null;
