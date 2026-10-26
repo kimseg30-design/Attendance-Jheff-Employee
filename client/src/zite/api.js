@@ -69,3 +69,4 @@ export const sfSave = (input) => call('sfSave', input);
 export const syncDraftPayrollAttendance = (input) => call('syncDraftPayrollAttendance', input);
 
 export const api = { bulkLogAttendance, deleteRecord, generateBirTaxReport, generatePayroll, getDashboard, getMyRole, getSystemHealth, inviteUser, listInvites, listRecords, listUsers, releasePayslips, revokeInvite, saveRecord, setPayslipDeduction, setUserRole, sfClearData, sfDeclareBalance, sfDelete, sfGetAudit, sfGetData, sfSave, syncDraftPayrollAttendance };
+export default api;

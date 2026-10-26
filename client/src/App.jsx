@@ -8,23 +8,7 @@ import { AdminOnlyGate, MemberOrEditorGate } from './components/RoleGate';
 import EditorHome from './components/EditorHome';
 import Layout from './components/Layout';
 import AppErrorBoundary from './components/AppErrorBoundary';
-
-function lazyWithRetry(factory) {
-  return lazy(async () => {
-    try {
-      return await factory();
-    } catch (err) {
-      const now = Date.now();
-      const lastRetry = Number(sessionStorage.getItem('last_lazy_retry') || 0);
-      if (now - lastRetry > 3000) {
-        sessionStorage.setItem('last_lazy_retry', String(now));
-        window.location.reload();
-        return new Promise(() => {});
-      }
-      throw err;
-    }
-  });
-}
+import lazyWithRetry from './utils/lazyWithRetry';
 
 const AttendancePage = lazyWithRetry(() => import('./pages/AttendancePage'));
 const PayrollPage = lazyWithRetry(() => import('./pages/PayrollPage'));

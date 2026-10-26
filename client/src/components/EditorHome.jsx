@@ -1,4 +1,5 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
+import lazyWithRetry from '../utils/lazyWithRetry';
 import { Link } from 'react-router-dom';
 import { CalendarClock, HandCoins, Shield, Lock, CheckCircle2, ArrowRight, Eye, Mail, Info } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { useAuth } from '@/zite/auth';
 import { useRole } from '../services/role';
 
-const DashboardPage = lazy(() => import('../pages/DashboardPage'));
+const DashboardPage = lazyWithRetry(() => import('../pages/DashboardPage'));
 
 const RESTRICTED_MODULES = [
   { name: 'Payroll & Payslips', desc: 'Cutoff computation, SSS/PhilHealth/Pag-IBIG calculations, and payslip releasing', path: '/payroll' },

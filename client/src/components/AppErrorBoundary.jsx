@@ -2,8 +2,10 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/shared/ui/button';
 import { AlertTriangle } from 'lucide-react';
+const CHUNK_ERROR_PATTERN = /dynamically imported module|Importing a module script failed|Failed to fetch|Loading chunk|'default' in|Expected the result of a dynamic import|default export/i;
+
 function Fallback({ error, resetErrorBoundary }) {
-    const isChunkError = error instanceof Error && /dynamically imported module|Importing a module script failed|Failed to fetch/i.test(error.message);
+    const isChunkError = error instanceof Error && (CHUNK_ERROR_PATTERN.test(error.message) || error.name === 'ChunkLoadError');
     return (<div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 p-6 text-center">
       <AlertTriangle className="h-8 w-8 text-destructive"/>
       <h2 className="text-lg font-semibold">
@@ -25,7 +27,7 @@ export default function AppErrorBoundary({ children }) {
     return (<ErrorBoundary FallbackComponent={Fallback} resetKeys={[location.pathname]} onError={(error) => {
             console.error('[UI error]', location.pathname, error);
             // After a new deploy, old page chunk files change — reload automatically to get the latest bundle.
-            if (error instanceof Error && /dynamically imported module|Importing a module script failed|Failed to fetch/i.test(error.message)) {
+            if (error instanceof Error && (CHUNK_ERROR_PATTERN.test(error.message) || error.name === 'ChunkLoadError')) {
                 const now = Date.now();
                 const lastReload = Number(sessionStorage.getItem('last_chunk_reload') || 0);
                 if (now - lastReload > 3000) {

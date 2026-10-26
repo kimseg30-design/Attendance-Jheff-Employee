@@ -1,8 +1,6 @@
 // Sahod PWA Service Worker
-const CACHE_NAME = 'sahod-pwa-v2';
+const CACHE_NAME = 'sahod-pwa-v3';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.webmanifest',
   '/icon.svg',
   '/icons/pwa-192x192.png',
