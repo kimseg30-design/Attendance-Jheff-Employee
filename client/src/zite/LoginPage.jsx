@@ -43,17 +43,22 @@ export default function LoginPage() {
 
     // 0. If pre-approved administrator session is already active
     const adminSession = typeof window !== 'undefined' ? localStorage.getItem('sahod_admin_session') : null;
-    if (adminSession === 'true') {
+    const currentDemo = typeof window !== 'undefined' ? localStorage.getItem('sahod_demo_email') : null;
+    if (invitedEmailParam && currentDemo?.toLowerCase() !== invitedEmailParam.toLowerCase()) {
+      // Do not auto-navigate: allow the invited user to accept the invitation card!
+    } else if (adminSession === 'true') {
       navigateToApp();
       return;
     }
 
     // 1. If already authenticated or restored
-    supabase.auth.getSession().then(({ data }) => {
-      if (data?.session) {
-        navigateToApp();
-      }
-    });
+    if (!invitedEmailParam) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (data?.session) {
+          navigateToApp();
+        }
+      });
+    }
 
     // 2. Message sent from popup window dialog
     const handleMessage = (event) => {

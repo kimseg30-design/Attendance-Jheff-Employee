@@ -35,7 +35,7 @@ export function useRole(userProp) {
             if (role === 'Viewer') return false;
             if (role === 'Editor') {
                 if (table === 'attendance') return permissions.includes('attendance');
-                if (table === 'cashAdvances') return permissions.includes('cashAdvances');
+                if (table === 'cashAdvances' || table === 'cash_advances') return permissions.includes('cashAdvances');
             }
             return false;
         },

@@ -79,31 +79,31 @@ export function useAuth() {
     const adminSession = typeof window !== 'undefined' ? localStorage.getItem('sahod_admin_session') : null;
 
     if (isSupabaseConfigured) {
-      supabase.auth.getSession().then(({ data, error }) => {
-        if (!active) return;
-        if (!error && data?.session?.user) {
-          setState({ user: toUser(data.session.user), isLoading: false });
-        } else if (adminSession === 'true') {
-          setState({ user: getActiveMockUser(), isLoading: false });
-        } else {
+      if (adminSession === 'true') {
+        setState({ user: getActiveMockUser(), isLoading: false });
+      } else {
+        supabase.auth.getSession().then(({ data, error }) => {
+          if (!active) return;
+          if (!error && data?.session?.user) {
+            setState({ user: toUser(data.session.user), isLoading: false });
+          } else {
+            setState({ user: null, isLoading: false });
+          }
+        }).catch(() => {
+          if (!active) return;
           setState({ user: null, isLoading: false });
-        }
-      }).catch(() => {
-        if (!active) return;
-        setState({ user: adminSession === 'true' ? getActiveMockUser() : null, isLoading: false });
-      });
+        });
+      }
 
       const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
         if (!active) return;
-        if (session?.user) {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('sahod_admin_session');
-            localStorage.removeItem('sahod_demo_email');
-          }
+        const isAdm = typeof window !== 'undefined' && localStorage.getItem('sahod_admin_session') === 'true';
+        if (isAdm) {
+          setState({ user: getActiveMockUser(), isLoading: false });
+        } else if (session?.user) {
           setState({ user: toUser(session.user), isLoading: false });
         } else {
-          const isAdm = typeof window !== 'undefined' && localStorage.getItem('sahod_admin_session') === 'true';
-          setState({ user: isAdm ? getActiveMockUser() : null, isLoading: false });
+          setState({ user: null, isLoading: false });
         }
       });
 
@@ -145,6 +145,11 @@ export function loginAsUser(userEmail, redirectPath) {
     localStorage.setItem('sahod_demo_email', userEmail.trim().toLowerCase());
     localStorage.removeItem('sahod_logged_out');
     localStorage.removeItem('sahod_simulated_role');
+  }
+  if (isSupabaseConfigured) {
+    try {
+      supabase.auth.signOut();
+    } catch {}
   }
   const redirect = redirectPath || new URLSearchParams(window.location.search).get('redirect') || '/';
   window.location.assign(redirect);

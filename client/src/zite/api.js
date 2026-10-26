@@ -26,11 +26,11 @@ async function call(name, input) {
     const demoEmail = localStorage.getItem('sahod_demo_email');
     if (demoEmail && (demoEmail.endsWith('@example.com') || demoEmail.includes('dummy'))) {
       localStorage.removeItem('sahod_demo_email');
-    } else if (demoEmail && demoEmail !== 'kimsegarra410@gmail.com') {
+    } else if (demoEmail) {
       headers['Authorization'] = 'Bearer demo-token';
       headers['X-User-Email'] = demoEmail;
     } else if (token === 'demo-token') {
-      headers['X-User-Email'] = demoEmail || 'kimsegarra410@gmail.com';
+      headers['X-User-Email'] = 'kimsegarra410@gmail.com';
     }
   }
 
