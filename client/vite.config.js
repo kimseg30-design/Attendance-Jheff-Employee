@@ -8,7 +8,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [react()],
   envDir: path.resolve(__dirname, '..'),
-  envPrefix: ['VITE_', 'SUPABASE_'],
+  // Only explicitly public VITE_ values may be compiled into the browser bundle.
+  envPrefix: ['VITE_'],
   resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
   server: { port: 5173, proxy: { '/api': process.env.SERVER_URL || 'http://localhost:3000' } },
   build: { outDir: 'dist' },

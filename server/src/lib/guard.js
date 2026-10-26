@@ -43,7 +43,10 @@ export async function throttle(user, kind) {
         await zite.rateLimitBuckets.bulkCreate({ records: [{ bucketKey, requestCount: count, windowStart: `${minute}:00.000Z` }], matchOn: ['bucketKey'] });
     }
     catch (e) {
-        // Fail open: a counter outage must not lock staff out of payroll.
+        if (process.env.NODE_ENV === 'production') {
+            throw new ZiteError({ code: 'INTERNAL', message: `Rate limit service unavailable: ${e.message}`, userFacingMessage: 'Security check unavailable. Please retry shortly.' });
+        }
+        // Local development can continue without a persistent rate-limit store.
         console.error('Rate limit counter unavailable', e);
         return;
     }

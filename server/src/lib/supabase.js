@@ -210,7 +210,7 @@ function handleMemoryRequest(path, init = {}) {
 }
 
 const DEFAULT_SUPABASE_URL = 'https://xurvumenaszahorrxhxf.supabase.co';
-const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_0uYtc2gANKbcM2trdrO8zA_DINcfSiZ';
+const ALLOW_MEMORY_FALLBACK = process.env.NODE_ENV !== 'production';
 
 function cleanConfigValue(val, fallback) {
     if (!val) return fallback;
@@ -247,7 +247,19 @@ function isValidSupabaseConfig(url, key) {
     ) {
         return false;
     }
-    return true;
+    return isServerDatabaseKey(key);
+}
+
+function isServerDatabaseKey(key) {
+    if (String(key).startsWith('sb_secret_')) return true;
+    const payload = String(key).split('.')[1];
+    if (!payload) return false;
+    try {
+        const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+        return claims.role === 'service_role';
+    } catch {
+        return false;
+    }
 }
 
 // Reads use a process-local cache. Cache hits do not measure PostgreSQL execution time.
@@ -272,11 +284,13 @@ export async function request(path, init = {}) {
         await invalidateCacheTag('dashboard');
     }
 
-    const rawUrl = normalizeSupabaseUrl(cleanConfigValue(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, DEFAULT_SUPABASE_URL));
-    const key = cleanConfigValue(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_PUBLISHABLE_KEY);
+    const configuredUrl = process.env.SUPABASE_URL || (ALLOW_MEMORY_FALLBACK ? DEFAULT_SUPABASE_URL : '');
+    const rawUrl = normalizeSupabaseUrl(cleanConfigValue(configuredUrl, ''));
+    const key = cleanConfigValue(process.env.SUPABASE_SERVICE_ROLE_KEY, '');
     const hasConfig = isValidSupabaseConfig(rawUrl, key);
 
     if (!hasConfig) {
+        if (!ALLOW_MEMORY_FALLBACK) throw new Error('Database is unavailable: configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
         console.warn(`[db-timing] ${method} ${path.split('?')[0]} source=memory-fallback reason=missing-config`);
         const memoryRes = handleMemoryRequest(path, init);
         if (isRead && memoryRes !== null) {
@@ -295,6 +309,11 @@ export async function request(path, init = {}) {
         });
         const text = await res.text();
         if (!res.ok) {
+            if (!ALLOW_MEMORY_FALLBACK) {
+                const error = new Error(`Supabase request failed (${res.status}): ${text.slice(0, 300)}`);
+                error.status = res.status;
+                throw error;
+            }
             console.warn(`[db-timing] ${method} ${path.split('?')[0]} ${Date.now() - requestStartedAt}ms source=memory-fallback reason=supabase-${res.status}`);
             if (res.status === 401 || res.status === 403) {
                 console.warn(`[Supabase] Permission denied (${res.status}) on ${method} ${path}. Use a server-only key with the secure RLS configuration; do not grant broad anon access.`);
@@ -314,6 +333,7 @@ export async function request(path, init = {}) {
         }
         return data;
     } catch (e) {
+        if (!ALLOW_MEMORY_FALLBACK) throw e;
         console.warn(`[db-timing] ${method} ${path.split('?')[0]} ${Date.now() - requestStartedAt}ms source=memory-fallback reason=network-error`);
         console.warn(`[Supabase] Network error for ${path}: ${e.message}, using mock fallback.`);
         const fallbackRes = handleMemoryRequest(path, init);

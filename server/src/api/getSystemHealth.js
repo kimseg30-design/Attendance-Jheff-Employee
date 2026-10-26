@@ -26,9 +26,9 @@ export default createEndpoint({
     }),
     execute: withLog('getSystemHealth', async ({ context }) => {
         await requireAdmin(context.user, 'read');
-        const rawUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://xurvumenaszahorrxhxf.supabase.co';
-        const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_0uYtc2gANKbcM2trdrO8zA_DINcfSiZ';
-        const base = new URL(rawUrl).origin;
+        const rawUrl = process.env.SUPABASE_URL || '';
+        const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+        const base = rawUrl ? new URL(rawUrl).origin : '';
         let database;
         const started = Date.now();
         if (!rawUrl || !key) {
@@ -57,7 +57,7 @@ export default createEndpoint({
                 database = { status: 'error', message: 'Could not reach Supabase endpoint' };
             }
         }
-        const hasServiceRoleKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY);
+        const hasServiceRoleKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
         const security = {
             status: 'warning',
             code: 'rls_unverified',

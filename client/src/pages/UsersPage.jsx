@@ -59,46 +59,21 @@ export default function UsersPage() {
       <Card className="divide-y">
         {isLoading || roleLoading ? [0, 1, 2].map((i) => <div key={i} className="p-4"><Skeleton className="h-6 w-1/2"/></div>) :
             data?.users.map((u) => {
-              const isPrimary = u.id === 'usr_admin' || u.id === 'usr_admin_alt' || u.id === 'usr_admin_orig' || ['kimsegarra410@gmail.com', 'kimsegarra4@gmail.com', 'kimsegarra516@gmail.com'].includes(u.email?.toLowerCase());
+              const isPrimary = u.id === user?.id;
               return (
               <div key={u.id} className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0 lg:flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="truncate font-medium">{u.name}{u.id === user?.id && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}</div>
                     <Badge variant={u.role === 'Admin' ? 'default' : 'secondary'}>{u.role}</Badge>
-                    {u.email !== user?.email && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-6 px-2 text-[11px] font-normal"
-                        onClick={() => {
-                          localStorage.setItem('sahod_demo_email', u.email);
-                          localStorage.setItem('sahod_admin_session', 'true');
-                          if (u.role === 'Editor') {
-                            if (u.permissions.includes('attendance')) {
-                              window.location.assign('/attendance');
-                              return;
-                            }
-                            if (u.permissions.includes('cashAdvances')) {
-                              window.location.assign('/advances');
-                              return;
-                            }
-                          }
-                          window.location.assign('/');
-                        }}
-                        title="Test how the application looks and functions with this user's role"
-                      >
-                        Simulate view
-                      </Button>
-                    )}
+
                   </div>
                   <div className="truncate text-sm text-muted-foreground">{u.email}</div>
                 </div>
                 <div className="flex flex-col gap-3 lg:w-[420px]">
                   {isPrimary ? (
                     <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">Primary Administrator</span>
+                      <span className="font-medium text-foreground">Current account</span>
                       <Badge variant="outline" className="text-[10px] bg-background">Protected Admin</Badge>
                     </div>
                   ) : (

@@ -1,21 +1,21 @@
-# Sahod — PH Attendance & Payroll (JavaScript + Node.js)
+# Sahod — PH Attendance & Payroll
 
-Same features as the Zite app: employees, departments, attendance (incl. half-day), leaves,
-cash advances, payroll loans, semi-monthly payroll & payslips (release, bulk print, bulk delete),
-reports/exports, the Sinking Fund module (members, contributions, loans, interest reconciliation,
-audit trail), users & roles with invites, rate limiting, failure log and System health.
+The app contains employee, attendance, leave, payroll, cash advance, loan, Sinking Fund, reporting, and user access modules.
 
-- **Frontend:** Vite + React (JavaScript) — `client/`
-- **Backend:** Node.js + Express — `server/` (every file in `server/src/api` is a `POST /api/<name>` endpoint)
-- **Database & sign-in:** Supabase (Postgres + Supabase Auth: email link and Google)
+- Frontend: Vite + React in `client/`
+- Backend: Express in `server/`, exposed through Vercel at `/api`
+- Authentication and PostgreSQL: Supabase Auth and Postgres
 
-## Setup
-1. In Supabase SQL editor run, in order: `supabase/schema.sql`, `supabase/sinking_fund.sql`, the other
-   migration files, `supabase/security_hardening.sql`, then `supabase/app_tables.sql`.
-2. Supabase → Authentication: enable Email (magic link) and Google; add `http://localhost:5173` and
-   your production URL to Redirect URLs. Sign-ups are invite-only: invite people from the Users page
-   (or Supabase → Authentication → Invite user).
-3. Copy `client/.env.example` → `client/.env` and `server/.env.example` → `server/.env` and fill in.
-4. `npm run install:all`
-5. Development: `npm run dev:server` and `npm run dev:client`, open http://localhost:5173
-6. Production: `npm run build` then `npm start` (Express serves the built app on `PORT`).
+## Local setup
+
+1. Copy `.env.example` to `.env` and configure the Supabase URL, server-only key, browser Auth key, initial admin email(s), and app URL.
+2. Never put `SUPABASE_SERVICE_ROLE_KEY` in a `VITE_` variable or commit a real key.
+3. In Supabase, apply `schema.sql`, `sinking_fund.sql`, `app_tables.sql`, the feature migrations needed by the deployment (including `weekly_sinking_contribution.sql` when using weekly contributions), then `payroll_atomic_operations.sql`. These payroll functions keep release/deletion ledger changes in one transaction. Review `security_hardening.sql` against the live policies and server key before applying it.
+4. Do not run `enable_rls_policies.sql` or `grant_publishable_access.sql` against production payroll data; they enable broad direct database access.
+5. Run `npm install`, then `npm run dev` and open the URL printed by Vite.
+
+## Production setup
+
+Configure the variables from `.env.example` in the hosting environment. Set Supabase Auth redirect URLs for the production domain and verify the server-only key before enabling payroll traffic. The app requires a valid Supabase access token for API requests; demo login and local role simulation are disabled.
+
+Run `npm run build` to create the client bundle. The Vercel deployment guide is in `VERCEL.md`.

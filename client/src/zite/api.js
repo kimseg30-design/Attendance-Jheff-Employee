@@ -1,42 +1,15 @@
-// Calls the Node.js backend at /api/<name> with the signed-in user's token.
+// Calls the Node.js backend with the current Supabase Auth access token.
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 async function call(name, input) {
-  let token = 'demo-token';
-  const headers = { 'Content-Type': 'application/json' };
-
-  if (isSupabaseConfigured) {
-    try {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session?.access_token) {
-        token = data.session.access_token;
-      }
-    } catch {
-      // fallback to demo token
-    }
-  }
-
-  headers['Authorization'] = `Bearer ${token}`;
-
-  if (typeof window !== 'undefined') {
-    const simulatedRole = localStorage.getItem('sahod_simulated_role');
-    if (simulatedRole) {
-      headers['X-Simulated-Role'] = simulatedRole;
-    }
-    const demoEmail = localStorage.getItem('sahod_demo_email');
-    if (demoEmail && (demoEmail.endsWith('@example.com') || demoEmail.includes('dummy'))) {
-      localStorage.removeItem('sahod_demo_email');
-    } else if (demoEmail) {
-      headers['Authorization'] = 'Bearer demo-token';
-      headers['X-User-Email'] = demoEmail;
-    } else if (token === 'demo-token') {
-      headers['X-User-Email'] = 'kimsegarra410@gmail.com';
-    }
-  }
+  if (!isSupabaseConfigured) throw new Error('Authentication service is not configured.');
+  const { data, error } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (error || !token) throw new Error('Please sign in again.');
 
   const res = await fetch(`/api/${name}`, {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(input ?? {}),
   });
   const body = await res.json().catch(() => ({}));

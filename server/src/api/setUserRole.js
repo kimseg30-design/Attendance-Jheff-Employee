@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createEndpoint, ZiteError } from '../zite/backend.js';
 import { zite } from '../zite/db.js';
-import { requireAdmin } from '../lib/roles.js';
+import { isDefaultAdmin, requireAdmin } from '../lib/roles.js';
 import { withLog } from '../lib/guard.js';
 const permissionSchema = z.enum(['attendance', 'cashAdvances']);
 export default createEndpoint({
@@ -19,9 +19,7 @@ export default createEndpoint({
         const email = input.email.trim().toLowerCase();
 
         // Protect primary admin accounts from being demoted
-        const PRIMARY_ADMIN_EMAILS = ['kimsegarra410@gmail.com', 'kimsegarra4@gmail.com', 'kimsegarra516@gmail.com'];
-        const PRIMARY_ADMIN_IDS = ['usr_admin', 'usr_admin_alt', 'usr_admin_orig'];
-        const isPrimaryAdmin = PRIMARY_ADMIN_IDS.includes(input.userId) || PRIMARY_ADMIN_EMAILS.includes(email) || (context.user && (input.userId === context.user.id || email === context.user.email?.toLowerCase()));
+        const isPrimaryAdmin = isDefaultAdmin({ id: input.userId, email }) || (context.user && (input.userId === context.user.id || email === context.user.email?.toLowerCase()));
         if (isPrimaryAdmin && input.role !== 'Admin') {
             throw new ZiteError({
                 code: 'BAD_REQUEST',

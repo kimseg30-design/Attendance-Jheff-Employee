@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createEndpoint, ZiteError } from '../zite/backend.js';
-import { zite } from '../zite/db.js';
+import { admin, zite } from '../zite/db.js';
 import { requireAdmin } from '../lib/roles.js';
 import { withLog } from '../lib/guard.js';
 export default createEndpoint({
@@ -11,7 +11,7 @@ export default createEndpoint({
         role: z.enum(['Admin', 'Viewer', 'Editor']),
         permissions: z.array(z.enum(['attendance', 'cashAdvances'])).optional(),
     }),
-    outputSchema: z.object({ success: z.boolean() }),
+    outputSchema: z.object({ success: z.boolean(), invited: z.boolean() }),
     execute: withLog('inviteUser', async ({ input, context }) => {
         await requireAdmin(context.user);
         const email = input.email.trim().toLowerCase();
@@ -28,9 +28,19 @@ export default createEndpoint({
         const user = existing.records[0];
         if (user) {
             await zite.userRoles.bulkCreate({ records: [{ label: email, user: user.id, role }], matchOn: ['user'] });
-            return { success: true };
+            return { success: true, invited: false };
         }
-        await zite.appInvites.bulkCreate({ records: [{ email, role, invitedBy: context.user.id }], matchOn: ['email'] });
-        return { success: true };
+        if (!admin?.auth?.admin) {
+            throw new ZiteError({ code: 'INTERNAL', message: 'Supabase Auth Admin API is not configured.', userFacingMessage: 'The server cannot send account invitations. Check its Supabase server key.' });
+        }
+        const redirectTo = `${(process.env.APP_BASE_URL || '').replace(/\/$/, '')}/auth/callback`;
+        if (!redirectTo.startsWith('https://') && process.env.NODE_ENV === 'production') {
+            throw new ZiteError({ code: 'INTERNAL', message: 'APP_BASE_URL must be configured with the production HTTPS origin.' });
+        }
+        const { data, error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
+        if (error) throw error;
+        if (!data?.user?.id) throw new Error('Supabase did not return the invited user id.');
+        await zite.userRoles.bulkCreate({ records: [{ label: email, user: data.user.id, role }], matchOn: ['user'] });
+        return { success: true, invited: true };
     }),
 });

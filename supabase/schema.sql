@@ -160,7 +160,7 @@ returns json language sql stable as $$
 $$;
 
 -- Secure-by-default RLS: the browser must never query these tables directly.
--- Keep ZITE_API_KEY as a server-only Supabase service_role/secret key.
+-- Keep SUPABASE_SERVICE_ROLE_KEY as a server-only Supabase service_role/secret key.
 do $$
 declare t text;
 begin

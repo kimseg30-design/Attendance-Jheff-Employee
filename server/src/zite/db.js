@@ -5,8 +5,8 @@ import '../lib/loadEnv.js';
 import { createClient } from '@supabase/supabase-js';
 import { memoryDb } from '../lib/memoryStore.js';
 
-const DEFAULT_SUPABASE_URL = 'https://xurvumenaszahorrxhxf.supabase.co';
-const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_0uYtc2gANKbcM2trdrO8zA_DINcfSiZ';
+const ALLOW_MEMORY_FALLBACK = process.env.NODE_ENV !== 'production';
+const DEFAULT_SUPABASE_URL = ALLOW_MEMORY_FALLBACK ? 'https://xurvumenaszahorrxhxf.supabase.co' : '';
 
 function normalizeSupabaseUrl(url) {
   if (!url) return '';
@@ -31,8 +31,8 @@ function cleanConfigValue(val, fallback) {
   return str;
 }
 
-const supabaseUrl = normalizeSupabaseUrl(cleanConfigValue(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, DEFAULT_SUPABASE_URL));
-const supabaseKey = cleanConfigValue(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_PUBLISHABLE_KEY);
+const supabaseUrl = normalizeSupabaseUrl(cleanConfigValue(process.env.SUPABASE_URL, DEFAULT_SUPABASE_URL));
+const supabaseKey = cleanConfigValue(process.env.SUPABASE_SERVICE_ROLE_KEY, '');
 
 function isValidSupabaseConfig(url, key) {
   if (!url || !key) return false;
@@ -46,7 +46,19 @@ function isValidSupabaseConfig(url, key) {
   ) {
     return false;
   }
-  return true;
+  return isServerDatabaseKey(key);
+}
+
+function isServerDatabaseKey(key) {
+  if (String(key).startsWith('sb_secret_')) return true;
+  const payload = String(key).split('.')[1];
+  if (!payload) return false;
+  try {
+    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return claims.role === 'service_role';
+  } catch {
+    return false;
+  }
 }
 
 const isConfigured = isValidSupabaseConfig(supabaseUrl, supabaseKey);
@@ -87,11 +99,13 @@ function table(name) {
           check(error);
           return { records: data.map(fromRow) };
         } catch (e) {
+          if (!ALLOW_MEMORY_FALLBACK) throw e;
           if (!e.isTableMissing) {
             console.warn(`[db] Fallback to in-memory for ${name}.findAll:`, e.message);
           }
         }
       }
+      if (!ALLOW_MEMORY_FALLBACK) throw new Error(`Database unavailable for ${name}.findAll`);
       let list = memoryDb[name] || [];
       for (const [k, v] of Object.entries(filters)) {
         list = list.filter((item) => String(item[k]) === String(Array.isArray(v) ? v[0] : v));
@@ -108,11 +122,13 @@ function table(name) {
           check(error);
           return data[0] ? fromRow(data[0]) : null;
         } catch (e) {
+          if (!ALLOW_MEMORY_FALLBACK) throw e;
           if (!e.isTableMissing) {
             console.warn(`[db] Fallback to in-memory for ${name}.findOne:`, e.message);
           }
         }
       }
+      if (!ALLOW_MEMORY_FALLBACK) throw new Error(`Database unavailable for ${name}.findOne`);
       const list = memoryDb[name] || [];
       const item = list.find((it) => {
         return Object.entries(filters).every(([k, v]) => String(it[k]) === String(Array.isArray(v) ? v[0] : v));
@@ -127,11 +143,13 @@ function table(name) {
           check(error);
           return fromRow(data);
         } catch (e) {
+          if (!ALLOW_MEMORY_FALLBACK) throw e;
           if (!e.isTableMissing) {
             console.warn(`[db] Fallback to in-memory for ${name}.create:`, e.message);
           }
         }
       }
+      if (!ALLOW_MEMORY_FALLBACK) throw new Error(`Database unavailable for ${name}.create`);
       const item = { ...record, id: record.id || crypto.randomUUID(), createdAt: new Date().toISOString() };
       (memoryDb[name] ||= []).push(item);
       return item;
@@ -148,11 +166,13 @@ function table(name) {
           check(error);
           return { records: (data || []).map(fromRow) };
         } catch (e) {
+          if (!ALLOW_MEMORY_FALLBACK) throw e;
           if (!e.isTableMissing) {
             console.warn(`[db] Fallback to in-memory for ${name}.bulkCreate:`, e.message);
           }
         }
       }
+      if (!ALLOW_MEMORY_FALLBACK) throw new Error(`Database unavailable for ${name}.bulkCreate`);
       const list = (memoryDb[name] ||= []);
       const created = [];
       for (const rec of records) {
@@ -179,11 +199,13 @@ function table(name) {
           check(error);
           return { success: true };
         } catch (e) {
+          if (!ALLOW_MEMORY_FALLBACK) throw e;
           if (!e.isTableMissing) {
             console.warn(`[db] Fallback to in-memory for ${name}.delete:`, e.message);
           }
         }
       }
+      if (!ALLOW_MEMORY_FALLBACK) throw new Error(`Database unavailable for ${name}.delete`);
       if (memoryDb[name]) {
         memoryDb[name] = memoryDb[name].filter((item) => {
           if (id && item.id === id) return false;
@@ -220,10 +242,13 @@ export const zite = {
           if (filters.email) users = users.filter((u) => u.email?.toLowerCase() === String(filters.email).toLowerCase());
           users.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
           return { records: users.slice(0, limit), total: users.length, hasMore: users.length > limit };
-        } catch {
+        } catch (error) {
+          if (!ALLOW_MEMORY_FALLBACK) throw error;
           // Admin listUsers API requires service_role key; fallback to app user records
         }
       }
+
+      if (!ALLOW_MEMORY_FALLBACK) throw new Error('Supabase Auth Admin API unavailable.');
 
       // Collect known users from userRoles, default admins, and invites
       const rolesRes = await zite.userRoles.findAll({ limit: 2000 }).catch(() => ({ records: [] }));
@@ -269,20 +294,24 @@ export const zite = {
           const since = new Date(Date.now() - 864e5).toISOString();
           const { count, error } = await admin.from('app_failed_actions').select('id', { count: 'exact', head: true }).gte('occurred_at', since);
           if (error) {
+            if (!ALLOW_MEMORY_FALLBACK) throw error;
             return { rows: [{ n: (memoryDb.app_failed_actions || []).length }] };
           }
           return { rows: [{ n: count ?? 0 }] };
         }
         const { data, error } = await admin.from('app_failed_actions').select('*').order('occurred_at', { ascending: false }).limit(10);
         if (error) {
+          if (!ALLOW_MEMORY_FALLBACK) throw error;
           const actions = memoryDb.app_failed_actions || [];
           return { rows: actions.slice(-10).map(fromRow) };
         }
         return { rows: data.map(fromRow) };
       } catch (e) {
+        if (!ALLOW_MEMORY_FALLBACK) throw e;
         // Quiet in-memory fallback
       }
     }
+    if (!ALLOW_MEMORY_FALLBACK) throw new Error('FailedActions database is unavailable.');
     const actions = memoryDb.app_failed_actions || [];
     if (/COUNT\(\*\)/i.test(query)) {
       return { rows: [{ n: actions.length }] };

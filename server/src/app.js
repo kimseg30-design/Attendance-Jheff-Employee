@@ -13,38 +13,20 @@ app.use(express.json({ limit: '5mb' }));
 
 async function getUser(req) {
   const token = (req.headers.authorization || '').replace(/^Bearer /, '');
-  if (!token) return undefined;
+  if (!token || token === 'demo-token' || token === 'mock-token' || !admin?.auth) return undefined;
 
-  const headerEmail = req.headers['x-user-email'];
-  const headerId = req.headers['x-user-id'];
-  const simulatedRole = req.headers['x-simulated-role'];
-
-  if (admin?.auth && token !== 'demo-token' && token !== 'mock-token' && !headerEmail && !simulatedRole) {
-    try {
-      const { data, error } = await admin.auth.getUser(token);
-      if (!error && data?.user) {
-        const u = data.user;
-        const name = u.user_metadata?.full_name || u.user_metadata?.name || '';
-        const [firstName = '', ...rest] = name.split(' ');
-        return { id: u.id, email: u.email, firstName, lastName: rest.join(' '), simulatedRole: null };
-      }
-    } catch {
-      // ignore
-    }
+  try {
+    const { data, error } = await admin.auth.getUser(token);
+    if (error || !data?.user?.email_confirmed_at) return undefined;
+    const u = data.user;
+    const name = u.user_metadata?.full_name || u.user_metadata?.name || '';
+    const [firstName = '', ...rest] = name.split(' ');
+    return { id: u.id, email: u.email, firstName, lastName: rest.join(' ') };
+  } catch (error) {
+    console.warn('[auth] Supabase token verification failed:', error.message);
+    return undefined;
   }
-
-  const email = (headerEmail || 'kimsegarra410@gmail.com').trim().toLowerCase();
-  let id = headerId;
-  if (!id) {
-    if (email === 'kimsegarra410@gmail.com') id = 'usr_admin';
-    else if (email === 'kimsegarra4@gmail.com') id = 'usr_admin_alt';
-    else if (email === 'kimsegarra516@gmail.com') id = 'usr_admin_orig';
-    else id = `usr_${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
-  }
-  const namePart = email.split('@')[0];
-  return { id, email, firstName: namePart, lastName: '', simulatedRole: simulatedRole || null };
 }
-
 // Health check endpoint
 app.get(['/api/health', '/health'], (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -68,7 +50,10 @@ app.post(['/api/:name', '/:name', '/api', '/'], async (req, res) => {
     const user = await getUser(req);
     if (endpoint.authenticated && !user) return res.status(401).json({ error: 'Please sign in.' });
     const parsed = endpoint.inputSchema?.safeParse(req.body ?? {});
-    const input = parsed?.success ? parsed.data : req.body ?? {};
+    if (parsed && !parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid request.' });
+    }
+    const input = parsed?.data ?? req.body ?? {};
     const result = await endpoint.execute({ input, context: { user } });
     res.json(result ?? {});
   } catch (e) {

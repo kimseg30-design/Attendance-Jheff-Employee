@@ -8,19 +8,15 @@ function decodeRole(raw) {
     const valid = encoded.split(',').filter((p) => p === 'attendance' || p === 'cashAdvances');
     return { role, permissions: role === 'Editor' ? [...new Set(valid)] : [] };
 }
-// Accounts that are guaranteed Admin access
-const DEFAULT_ADMIN_EMAILS = new Set(['kimsegarra410@gmail.com', 'kimsegarra4@gmail.com', 'kimsegarra516@gmail.com']);
+// Configure initial administrators explicitly in the server environment.
+const DEFAULT_ADMIN_EMAILS = new Set((process.env.ADMIN_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean));
 export function isDefaultAdmin(user) {
     if (!user) return false;
-    if (user.id === 'usr_admin' || user.id === 'usr_admin_alt' || user.id === 'usr_admin_orig') return true;
     const email = (user.email || '').trim().toLowerCase();
     return Boolean(email && DEFAULT_ADMIN_EMAILS.has(email));
 }
 export async function getRole(user) {
     if (!user) return 'None';
-    if (user.simulatedRole) {
-        return decodeRole(user.simulatedRole).role;
-    }
 
     // 1. Primary system administrators are guaranteed Admin to prevent lockouts
     if (isDefaultAdmin(user)) {
@@ -46,20 +42,10 @@ export async function getRole(user) {
         }
     }
 
-    // 4. Auto-grant Admin to the initial user if table is empty
-    const allRoles = await zite.userRoles.findAll({ limit: 5 });
-    if (!allRoles.records || allRoles.records.length === 0) {
-        await zite.userRoles.bulkCreate({ records: [{ label: email || 'admin@example.com', user: user.id, role: 'Admin' }], matchOn: ['user'] });
-        return 'Admin';
-    }
-
     return 'None';
 }
 export async function getPermissions(user) {
     if (!user) return [];
-    if (user.simulatedRole) {
-        return decodeRole(user.simulatedRole).permissions;
-    }
     const role = await getRole(user);
     if (role !== 'Editor') return [];
     const email = (user.email || '').trim().toLowerCase();

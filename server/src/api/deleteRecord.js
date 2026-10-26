@@ -4,6 +4,7 @@ import { requireTableAccess } from '../lib/roles.js';
 import { TABLES, tableClient } from '../lib/tables.js';
 import { syncLeaveCredits } from '../lib/leaveCredits.js';
 import { applyDeductions, removeGeneratedContributions } from '../lib/deductions.js';
+import { rpc } from '../lib/supabase.js';
 import { withLog } from '../lib/guard.js';
 export default createEndpoint({
     authenticated: true,
@@ -12,6 +13,13 @@ export default createEndpoint({
     outputSchema: z.object({ success: z.boolean() }),
     execute: withLog('deleteRecord', async ({ input, context }) => {
         await requireTableAccess(context.user, input.table, 'write');
+        if (input.table === 'payslips' && process.env.NODE_ENV === 'production') {
+            await rpc('delete_payslip_with_ledger', {
+                p_id: input.id,
+                p_actor: context.user.email ?? 'payroll-system',
+            });
+            return { success: true };
+        }
         const client = tableClient(input.table);
         const before = await client.findOne({ id: input.id });
         try {

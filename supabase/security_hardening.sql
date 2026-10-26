@@ -1,9 +1,9 @@
 -- SECURITY HARDENING MIGRATION — PH Attendance & Payroll
 -- Run manually in Supabase SQL Editor as a database owner AFTER confirming
--- apps/ph-attendance-payroll Secrets > ZITE_API_KEY is the Supabase service_role
--- (legacy) or secret key. It must stay server-side and must never use a VITE_ prefix.
+-- Vercel Production has SUPABASE_SERVICE_ROLE_KEY configured with the Supabase
+-- service_role/secret key. It must stay server-side and must never use a VITE_ prefix.
 -- This intentionally blocks direct anon/authenticated PostgREST access.
--- If ZITE_API_KEY is only an anon/publishable key, DO NOT RUN until you replace it.
+-- If SUPABASE_SERVICE_ROLE_KEY is missing, DO NOT RUN until it is configured.
 
 do $$
 declare
