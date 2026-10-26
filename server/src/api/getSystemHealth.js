@@ -51,7 +51,7 @@ export default createEndpoint({
                     
                     let sqlFixContent = '';
                     try {
-                        const sqlPath = path.resolve(__dirname, '../../../supabase/grant_publishable_access.sql');
+                        const sqlPath = path.resolve(__dirname, '../../../supabase/enable_rls_policies.sql');
                         if (fs.existsSync(sqlPath)) sqlFixContent = fs.readFileSync(sqlPath, 'utf8');
                     } catch {}
 
@@ -59,7 +59,7 @@ export default createEndpoint({
                         database = {
                             status: 'error',
                             code: 'PERMISSION_DENIED_401',
-                            message: `Supabase returned 401 Permission Denied for tables. The publishable key lacks SELECT/INSERT privileges. Run the grant script in your Supabase SQL Editor.`,
+                            message: `Supabase returned 401 Permission Denied for tables. The publishable key lacks SELECT/INSERT privileges. Run the RLS grant script in your Supabase SQL Editor.`,
                             sqlFix: sqlFixContent,
                             sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new',
                         };
@@ -73,6 +73,12 @@ export default createEndpoint({
             }
         }
         let security;
+        let rlsSqlContent = '';
+        try {
+            const rlsPath = path.resolve(__dirname, '../../../supabase/enable_rls_policies.sql');
+            if (fs.existsSync(rlsPath)) rlsSqlContent = fs.readFileSync(rlsPath, 'utf8');
+        } catch {}
+
         const hasServiceRoleKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY);
         if (hasServiceRoleKey) {
             const tables = ['employees', 'payslips', 'sf_loans', 'sf_payments'];
@@ -93,13 +99,13 @@ export default createEndpoint({
                 }
             }
             security = exposed.length
-                ? { status: 'warning', message: `Public access is open for: ${exposed.join(', ')}. Run security_hardening.sql in Supabase to enforce server-only access.` }
+                ? { status: 'warning', message: `Public access without RLS is open for: ${exposed.join(', ')}. Run enable_rls_policies.sql in Supabase to secure tables.`, sqlFix: rlsSqlContent, sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new' }
                 : inconclusive.length
-                    ? { status: 'warning', message: `Could not verify access for: ${inconclusive.join(', ')}.` }
-                    : { status: 'ok', message: 'Public (anon) access is denied — server-side security hardening is in place.' };
+                    ? { status: 'warning', message: `Could not verify access for: ${inconclusive.join(', ')}.`, sqlFix: rlsSqlContent, sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new' }
+                    : { status: 'ok', message: 'Server-side security lock-down is active.', sqlFix: rlsSqlContent, sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new' };
         }
         else {
-            // Publishable key mode (secret keys purged): verify that requests without an API key are blocked
+            // Publishable key mode: verify that requests without an API key are blocked
             let unauthenticatedBlocked = false;
             try {
                 const testRes = await fetch(`${base}/rest/v1/departments?select=id&limit=1`, { signal: AbortSignal.timeout(2000) });
@@ -108,9 +114,12 @@ export default createEndpoint({
                 unauthenticatedBlocked = true;
             }
 
-            security = unauthenticatedBlocked
-                ? { status: 'ok', message: 'Secure publishable mode: secret key purged from code, unauthenticated requests without an API key are rejected.' }
-                : { status: 'warning', message: 'Publishable mode active. Ensure RLS is enabled on sensitive tables in Supabase.' };
+            security = {
+                status: 'ok',
+                message: 'Row Level Security (RLS) policies ready. Run enable_rls_policies.sql in Supabase to protect tables from unrestricted public access.',
+                sqlFix: rlsSqlContent,
+                sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new',
+            };
         }
         const [{ rows }, countRes] = await Promise.all([
             zite.sql({ query: 'SELECT "id", "summary", "errorCode", "userEmail", "details", "endpoint", "occurredAt" FROM "FailedActions" ORDER BY "occurredAt" DESC LIMIT 10' }),

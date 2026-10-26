@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getSystemHealth } from '@/zite/api';
-import { Activity, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Copy, ExternalLink, Zap } from 'lucide-react';
+import { Activity, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Copy, ExternalLink, Zap, ShieldCheck } from 'lucide-react';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
@@ -33,6 +33,59 @@ export default function SystemHealth() {
               {data.cache && <CheckRow label="Redis & Query Cache" check={data.cache}/>}
               {data.indexing && <CheckRow label="Latency & Indexing" check={data.indexing}/>}
             </div>
+
+            {/* RLS Policy Activation Card */}
+            {data.security?.sqlFix && data.database?.status === 'ok' && (
+              <div className="mt-4 rounded-lg border border-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/30 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <div className="font-semibold text-sm text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                    <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                    Row Level Security (RLS) Activation (Fixes "UNRESTRICTED" & "RLS disabled")
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs bg-white dark:bg-background"
+                      onClick={() => {
+                        navigator.clipboard.writeText(data.security.sqlFix);
+                        toast.success('RLS activation script copied to clipboard!');
+                      }}
+                    >
+                      <Copy className="mr-1 h-3.5 w-3.5" />
+                      Copy RLS SQL
+                    </Button>
+                    {data.security?.sqlUrl && (
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs bg-indigo-700 hover:bg-indigo-800 text-white"
+                        onClick={() => window.open(data.security.sqlUrl, '_blank')}
+                      >
+                        <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                        Open Supabase SQL Editor
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-indigo-900 dark:text-indigo-300 mb-2">
+                  Enables Row Level Security (RLS) across all 17 public tables in Supabase (removes the red <b>UNRESTRICTED</b> badges in the table editor) while creating policies so the app continues to work without permission errors:
+                </p>
+                <ol className="list-decimal list-inside text-xs text-indigo-900 dark:text-indigo-300 space-y-1 mb-3">
+                  <li>Click <b>Copy RLS SQL</b> above.</li>
+                  <li>Click <b>Open Supabase SQL Editor</b> (or open your Supabase project dashboard → SQL Editor).</li>
+                  <li>Paste the script and click <b>Run</b>.</li>
+                  <li>Refresh your Supabase Table Editor — all tables will now show green <b>RLS enabled</b>!</li>
+                </ol>
+                <details className="text-xs">
+                  <summary className="cursor-pointer font-medium text-indigo-950 dark:text-indigo-200 hover:underline">
+                    View RLS Script Preview
+                  </summary>
+                  <pre className="mt-2 max-h-48 overflow-auto rounded bg-slate-900 text-slate-100 p-3 text-[11px] font-mono whitespace-pre">
+                    {data.security.sqlFix}
+                  </pre>
+                </details>
+              </div>
+            )}
             {data.database?.sqlFix && (
               <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
