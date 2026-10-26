@@ -110,13 +110,20 @@ for (let i = 13; i >= 0; i--) {
   const dayType = isWeekend ? 'Rest Day' : 'Regular Day';
 
   for (const emp of initialEmployees) {
+    let status = isWeekend ? 'Rest Day' : 'Present';
+    let timeOut = isWeekend ? null : '17:00';
+    if (!isWeekend && emp.id === emp3 && (i === 1 || i === 5)) {
+      status = 'Halfday';
+      timeOut = '12:00';
+    }
+
     initialAttendance.push({
       id: crypto.randomUUID(),
       employee: [emp.id],
       workDate: dStr,
       timeIn: isWeekend ? null : '08:00',
-      timeOut: isWeekend ? null : '17:00',
-      status: isWeekend ? 'Rest Day' : 'Present',
+      timeOut,
+      status,
       dayType,
       lateMinutes: 0,
       overtimeHours: 0,
@@ -154,6 +161,18 @@ const initialCashAdvances = [
     deductionPerCutoff: 1500,
     balance: 10500,
     dateGranted: subDays(today, 30),
+    status: 'Active',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: crypto.randomUUID(),
+    employee: [emp2],
+    description: 'Mid-month grocery advance',
+    type: 'Cash Advance',
+    amount: 5000,
+    deductionPerCutoff: 1000,
+    balance: 4000,
+    dateGranted: subDays(today, 10),
     status: 'Active',
     createdAt: new Date().toISOString(),
   },
@@ -327,10 +346,17 @@ export function setTableRecords(table, records) {
 export function computeMockDashboard() {
   const activeEmps = memoryDb.employees.filter((e) => e.active).length;
   const todayAtt = memoryDb.attendance.filter((a) => a.workDate === today);
-  const presentToday = todayAtt.filter((a) => ['Present', 'Halfday', 'Paid Leave'].includes(a.status)).length;
+  const presentToday = todayAtt.filter((a) => ['Present', 'Paid Leave'].includes(a.status)).length;
+  const halfdayToday = todayAtt.filter((a) => ['Halfday', 'Half Day'].includes(a.status)).length;
+  const restDayToday = todayAtt.filter((a) => a.status === 'Rest Day' || a.dayType === 'Rest Day').length;
   const absentToday = todayAtt.filter((a) => a.status === 'Absent').length;
   const pendingLeaves = memoryDb.leaves.filter((l) => l.status === 'Pending').length;
-  const outstandingLoans = memoryDb.cashAdvances.filter((c) => c.status === 'Active').reduce((s, c) => s + Number(c.balance || 0), 0);
+
+  const activeCas = memoryDb.cashAdvances.filter((c) => c.status === 'Active');
+  const cashAdvanceOnly = activeCas.filter((c) => !c.type || c.type === 'Cash Advance');
+  const outstandingCashAdvance = cashAdvanceOnly.length > 0
+    ? cashAdvanceOnly.reduce((s, c) => s + Number(c.balance || 0), 0)
+    : activeCas.reduce((s, c) => s + Number(c.balance || 0), 0);
 
   const deptCounts = {};
   for (const emp of memoryDb.employees) {
@@ -345,9 +371,12 @@ export function computeMockDashboard() {
   return {
     activeEmployees: activeEmps,
     presentToday,
+    halfdayToday,
+    restDayToday,
     absentToday,
     pendingLeaves,
-    outstandingLoans,
+    outstandingLoans: outstandingCashAdvance,
+    outstandingCashAdvance,
     lastPayroll: memoryDb.payslips[0] ? { label: memoryDb.payslips[0].periodLabel, total: memoryDb.payslips.reduce((a, b) => a + Number(b.netPay || 0), 0) } : null,
     byDepartment,
   };

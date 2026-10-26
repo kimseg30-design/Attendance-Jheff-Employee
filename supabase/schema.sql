@@ -136,15 +136,20 @@ create or replace function get_dashboard()
 returns json language sql stable as $$
   select json_build_object(
     'activeEmployees', (select count(*) from employees where active),
-    'presentToday', (select count(*) from attendance where work_date = (now() at time zone 'Asia/Manila')::date and status in ('Present','Halfday','Paid Leave')),
+    'presentToday', (select count(*) from attendance where work_date = (now() at time zone 'Asia/Manila')::date and status in ('Present','Paid Leave')),
+    'halfdayToday', (select count(*) from attendance where work_date = (now() at time zone 'Asia/Manila')::date and status in ('Halfday','Half Day')),
+    'restDayToday', (select count(*) from attendance where work_date = (now() at time zone 'Asia/Manila')::date and (status = 'Rest Day' or day_type = 'Rest Day')),
     'absentToday', (select count(*) from attendance where work_date = (now() at time zone 'Asia/Manila')::date and status = 'Absent'),
     'pendingLeaves', (select count(*) from leaves where status = 'Pending'),
     'outstandingLoans', (select coalesce(sum(balance),0) from cash_advances where status = 'Active'),
+    'outstandingCashAdvance', (select coalesce(sum(balance),0) from cash_advances where status = 'Active'),
     'lastPayroll', (select json_build_object('label', period_label, 'total', sum(net_pay)) from payslips
                     group by period_label, period_end order by period_end desc nulls last limit 1),
     'attendanceByDay', coalesce((select json_agg(x order by x.date) from (
         select to_char(work_date,'YYYY-MM-DD') as date,
-          count(*) filter (where status in ('Present','Halfday','Paid Leave')) as present,
+          count(*) filter (where status in ('Present','Paid Leave')) as present,
+          count(*) filter (where status in ('Halfday','Half Day')) as halfday,
+          count(*) filter (where status = 'Rest Day' or day_type = 'Rest Day') as rest_day,
           count(*) filter (where status = 'Absent') as absent
         from attendance where work_date >= (now() at time zone 'Asia/Manila')::date - 14 group by 1) x), '[]'::json),
     'byDepartment', coalesce((select json_agg(y order by y.count desc) from (
