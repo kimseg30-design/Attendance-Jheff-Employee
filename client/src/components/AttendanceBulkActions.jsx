@@ -15,7 +15,11 @@ export default function AttendanceBulkActions({ rows, clear }) {
             await Promise.all(rows.map(fn));
             toast.success(msg);
             clear();
-            qc.invalidateQueries();
+            await Promise.all([
+                qc.invalidateQueries({ queryKey: ['records', 'attendance'] }),
+                qc.invalidateQueries({ queryKey: ['records', 'employees'] }),
+                qc.invalidateQueries({ queryKey: ['dashboard'] }),
+            ]);
         }
         catch (e) {
             toast.error(e.message);

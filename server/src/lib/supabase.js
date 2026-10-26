@@ -250,8 +250,7 @@ function isValidSupabaseConfig(url, key) {
     return true;
 }
 
-// Multi-tier Query Cache (L1 Memory < 0.2ms, L2 Redis < 2ms)
-// Guarantees sub-millisecond database response times and zero downtime.
+// Reads use a process-local cache. Cache hits do not measure PostgreSQL execution time.
 export async function request(path, init = {}) {
     const method = (init.method || 'GET').toUpperCase();
     const isRead = method === 'GET';
@@ -294,7 +293,7 @@ export async function request(path, init = {}) {
         const text = await res.text();
         if (!res.ok) {
             if (res.status === 401 || res.status === 403) {
-                console.warn(`[Supabase] Permission denied (${res.status}) on ${method} ${path}. Table access denied for API key. Run grant_publishable_access.sql in Supabase SQL editor.`);
+                console.warn(`[Supabase] Permission denied (${res.status}) on ${method} ${path}. Use a server-only key with the secure RLS configuration; do not grant broad anon access.`);
             } else {
                 console.warn(`[Supabase] Request ${method} ${path} failed (${res.status}), using mock fallback.`);
             }

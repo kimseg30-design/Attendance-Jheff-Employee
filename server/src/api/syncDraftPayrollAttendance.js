@@ -9,23 +9,72 @@ const r2 = (n) => Math.round(n * 100) / 100;
 export default createEndpoint({
     authenticated: true,
     description: 'Refreshes draft payslip earnings when an attendance record is edited',
-    inputSchema: z.object({ employeeId: z.string(), workDate: z.string() }),
+    inputSchema: z.object({
+        employeeId: z.string().optional(),
+        employeeIds: z.array(z.string()).min(1).max(100).optional(),
+        workDate: z.string(),
+    }).refine(({ employeeId, employeeIds }) => Boolean(employeeId) !== Boolean(employeeIds), {
+        message: 'Provide either employeeId or employeeIds.',
+    }),
     outputSchema: z.object({ updated: z.number() }),
     execute: withLog('syncDraftPayrollAttendance', async ({ input, context }) => {
         await requireAdmin(context.user);
-        const employee = await db.employees.findOne({ id: input.employeeId });
-        if (!employee)
+        const employeeIds = [...new Set(input.employeeIds ?? [input.employeeId])];
+        const employeeIdSet = new Set(employeeIds);
+        let employeesById;
+        let slips;
+        if (input.employeeId) {
+            const employee = await db.employees.findOne({ id: input.employeeId });
+            if (!employee)
+                return { updated: 0 };
+            employeesById = new Map([[employee.id, employee]]);
+            slips = await db.payslips.findAll({ limit: 2000 });
+        }
+        else {
+            const [employeesResult, slipsResult] = await Promise.all([
+                db.employees.findAll({ limit: 2000 }),
+                db.payslips.findAll({ limit: 2000 }),
+            ]);
+            employeesById = new Map(employeesResult.records.filter((e) => employeeIdSet.has(e.id)).map((e) => [e.id, e]));
+            slips = slipsResult;
+        }
+        if (!employeesById.size)
             return { updated: 0 };
-        const slips = await db.payslips.findAll({ limit: 2000 });
         const matching = slips.records.filter((p) => p.status !== 'Released' &&
-            first(p.employee) === input.employeeId &&
+            employeeIdSet.has(first(p.employee)) &&
             String(p.periodStart ?? '').slice(0, 10) <= input.workDate &&
             String(p.periodEnd ?? '').slice(0, 10) >= input.workDate);
+        if (!matching.length)
+            return { updated: 0 };
+
+        // A batch can contain many employees with the same payroll coverage. Read
+        // attendance once per distinct coverage instead of once per employee/slip.
+        const attendanceByPeriod = new Map();
+        for (const slip of matching) {
+            const periodStart = String(slip.periodStart).slice(0, 10);
+            const periodEnd = String(slip.periodEnd).slice(0, 10);
+            const key = `${periodStart}|${periodEnd}`;
+            if (!attendanceByPeriod.has(key)) {
+                attendanceByPeriod.set(key, db.attendance.findAll({
+                    filters: { workDate: { gte: periodStart, lte: periodEnd } },
+                    limit: 2000,
+                }));
+            }
+        }
+        for (const [key, promise] of attendanceByPeriod) {
+            attendanceByPeriod.set(key, await promise);
+        }
         let updated = 0;
         for (const slip of matching) {
-            const attendance = await db.attendance.findAll({ filters: { workDate: { gte: String(slip.periodStart).slice(0, 10) } }, limit: 2000 });
+            const employeeId = first(slip.employee);
+            const employee = employeesById.get(employeeId);
+            if (!employee)
+                continue;
+            const periodStart = String(slip.periodStart).slice(0, 10);
+            const periodEnd = String(slip.periodEnd).slice(0, 10);
+            const attendance = attendanceByPeriod.get(`${periodStart}|${periodEnd}`);
             const logs = attendance.records
-                .filter((a) => first(a.employee) === input.employeeId && String(a.workDate).slice(0, 10) <= String(slip.periodEnd).slice(0, 10))
+                .filter((a) => first(a.employee) === employeeId && String(a.workDate).slice(0, 10) >= periodStart && String(a.workDate).slice(0, 10) <= periodEnd)
                 .map((a) => ({
                 status: a.status ?? 'Present',
                 dayType: a.dayType ?? 'Regular Day',

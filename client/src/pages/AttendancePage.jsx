@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { Button } from '@/shared/ui/button';
 import { ListChecks } from 'lucide-react';
@@ -20,6 +21,7 @@ function lateFrom(timeIn) {
     return Math.max(0, h * 60 + m - (sh * 60 + sm));
 }
 export default function AttendancePage() {
+    const qc = useQueryClient();
     const { isAdmin } = useRole();
     const emps = useNameMap('employees');
     const [status, setStatus] = useState('all');
@@ -91,10 +93,12 @@ export default function AttendancePage() {
         if (!employeeId || !workDate)
             return;
         void syncDraftPayrollAttendance({ employeeId, workDate }).then((result) => {
-            if (result.updated > 0)
+            if (result.updated > 0) {
+                qc.invalidateQueries({ queryKey: ['records', 'payslips'] });
                 toast.success(`Updated ${result.updated} draft payroll record${result.updated === 1 ? '' : 's'} from attendance changes`);
+            }
         }).catch((error) => toast.error(`Attendance saved, but draft payroll refresh failed: ${error.message}`));
-    }, [isAdmin]);
+    }, [isAdmin, qc]);
     return <CrudPage table="attendance" title="Attendance" singular="Log" description={`Daily time records with strict deduplication (one log per employee per date). Shift starts ${SHIFT_START} AM — lates are computed automatically.`} columns={columns} fields={fields} filter={filter} validate={validate} beforeSave={beforeSave} afterSave={afterSave} selectionActions={selectionActions} headerActions={<>
       <Button variant="outline" onClick={() => setBulkOpen(true)}><ListChecks className="mr-2 h-4 w-4"/>Bulk log</Button>
       <BulkAttendanceDialog open={bulkOpen} onOpenChange={setBulkOpen} employees={emps.list} lateFrom={lateFrom}/>

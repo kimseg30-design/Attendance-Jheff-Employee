@@ -75,7 +75,6 @@ export default function UsersPage() {
                         onClick={() => {
                           localStorage.setItem('sahod_demo_email', u.email);
                           localStorage.setItem('sahod_admin_session', 'true');
-                          qc.invalidateQueries();
                           if (u.role === 'Editor') {
                             if (u.permissions.includes('attendance')) {
                               window.location.assign('/attendance');

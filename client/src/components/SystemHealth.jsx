@@ -30,7 +30,7 @@ export default function SystemHealth() {
             <div className="grid gap-2 sm:grid-cols-2">
               <CheckRow label="Database connection" check={data.database}/>
               <CheckRow label="Security lock-down" check={data.security}/>
-              {data.cache && <CheckRow label="Redis & Query Cache" check={data.cache}/>}
+              {data.cache && <CheckRow label="Process Memory Cache" check={data.cache}/>}
               {data.indexing && <CheckRow label="Latency & Indexing" check={data.indexing}/>}
             </div>
 
@@ -142,7 +142,7 @@ export default function SystemHealth() {
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <div className="font-semibold text-sm text-sky-950 dark:text-sky-200 flex items-center gap-1.5">
                     <Zap className="h-4 w-4 text-sky-600" />
-                    Zero-Downtime Indexing Schema (Sub-millisecond Queries)
+                    Candidate Indexing SQL
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -170,7 +170,7 @@ export default function SystemHealth() {
                   </div>
                 </div>
                 <p className="text-xs text-sky-900 dark:text-sky-300 mb-2">
-                  Reduces PostgreSQL query latency from ~800ms to &lt;2ms without locking tables or dropping active connections:
+                  Review installed indexes and query plans before applying any index changes.
                 </p>
                 <ul className="list-disc list-inside text-xs text-sky-900 dark:text-sky-300 space-y-1 mb-3">
                   <li>Composite indexes on <code>(employee_id, work_date)</code>, <code>(work_date, status)</code>, and <code>(period_start, period_end)</code>.</li>

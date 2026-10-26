@@ -23,7 +23,7 @@ export default function PayslipLoanToggles({ slip, onChange }) {
         try {
             const r = await setPayslipDeduction({ payslipId: String(slip.id), detailId: d.id, source: d.source, include });
             onChange(r.slip);
-            qc.invalidateQueries({ queryKey: ['records'] });
+            await qc.invalidateQueries({ queryKey: ['records', 'payslips'] });
             toast.success(include ? 'Loan deduction included' : 'Loan deduction skipped for this payslip');
         }
         catch (e) {

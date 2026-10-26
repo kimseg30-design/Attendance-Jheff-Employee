@@ -3,13 +3,6 @@ import { createEndpoint } from '../zite/backend.js';
 import { zite } from '../zite/db.js';
 import { requireAdmin } from '../lib/roles.js';
 import { withLog } from '../lib/guard.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 import { getCacheHealth } from '../lib/cache.js';
 
 const check = z.object({
@@ -49,19 +42,11 @@ export default createEndpoint({
                     const errBody = await res.text().catch(() => '');
                     const isPermissionDenied = res.status === 401 || res.status === 403 || errBody.includes('permission denied') || errBody.includes('42501');
                     
-                    let sqlFixContent = '';
-                    try {
-                        const sqlPath = path.resolve(__dirname, '../../../supabase/enable_rls_policies.sql');
-                        if (fs.existsSync(sqlPath)) sqlFixContent = fs.readFileSync(sqlPath, 'utf8');
-                    } catch {}
-
                     if (isPermissionDenied) {
                         database = {
                             status: 'error',
                             code: 'PERMISSION_DENIED_401',
-                            message: `Supabase returned 401 Permission Denied for tables. The publishable key lacks SELECT/INSERT privileges. Run the RLS grant script in your Supabase SQL Editor.`,
-                            sqlFix: sqlFixContent,
-                            sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new',
+                            message: 'Supabase denied table access. Configure a server-only secret/service-role key and verify the secure RLS setup; do not grant broad anon access.',
                         };
                     } else {
                         database = { status: 'error', message: `Supabase responded with error ${res.status}: ${errBody.slice(0, 100)}` };
@@ -72,55 +57,14 @@ export default createEndpoint({
                 database = { status: 'error', message: 'Could not reach Supabase endpoint' };
             }
         }
-        let security;
-        let rlsSqlContent = '';
-        try {
-            const rlsPath = path.resolve(__dirname, '../../../supabase/enable_rls_policies.sql');
-            if (fs.existsSync(rlsPath)) rlsSqlContent = fs.readFileSync(rlsPath, 'utf8');
-        } catch {}
-
         const hasServiceRoleKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY);
-        if (hasServiceRoleKey) {
-            const tables = ['employees', 'payslips', 'sf_loans', 'sf_payments'];
-            const exposed = [];
-            const inconclusive = [];
-            for (const t of tables) {
-                try {
-                    const res = await fetch(`${base}/rest/v1/${t}?select=id&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(2000) });
-                    if (res.ok) {
-                        exposed.push(t);
-                    }
-                    else if (res.status !== 401 && res.status !== 403) {
-                        inconclusive.push(`${t} (${res.status})`);
-                    }
-                }
-                catch {
-                    inconclusive.push(`${t} (unreachable)`);
-                }
-            }
-            security = exposed.length
-                ? { status: 'warning', message: `Public access without RLS is open for: ${exposed.join(', ')}. Run enable_rls_policies.sql in Supabase to secure tables.`, sqlFix: rlsSqlContent, sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new' }
-                : inconclusive.length
-                    ? { status: 'warning', message: `Could not verify access for: ${inconclusive.join(', ')}.`, sqlFix: rlsSqlContent, sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new' }
-                    : { status: 'ok', message: 'Server-side security lock-down is active.', sqlFix: rlsSqlContent, sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new' };
-        }
-        else {
-            // Publishable key mode: verify that requests without an API key are blocked
-            let unauthenticatedBlocked = false;
-            try {
-                const testRes = await fetch(`${base}/rest/v1/departments?select=id&limit=1`, { signal: AbortSignal.timeout(2000) });
-                unauthenticatedBlocked = (testRes.status === 401 || testRes.status === 403);
-            } catch {
-                unauthenticatedBlocked = true;
-            }
-
-            security = {
-                status: 'ok',
-                message: 'Row Level Security (RLS) policies ready. Run enable_rls_policies.sql in Supabase to protect tables from unrestricted public access.',
-                sqlFix: rlsSqlContent,
-                sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new',
-            };
-        }
+        const security = {
+            status: 'warning',
+            code: 'rls_unverified',
+            message: hasServiceRoleKey
+                ? 'The server key bypasses RLS. This endpoint cannot inspect pg_policies or verify direct anon/auth access; check those in Supabase before changing policies.'
+                : 'RLS policies and direct anon/auth access have not been verified. Keep payroll data behind the authenticated server API; do not grant broad anon access.',
+        };
         const [{ rows }, countRes] = await Promise.all([
             zite.sql({ query: 'SELECT "id", "summary", "errorCode", "userEmail", "details", "endpoint", "occurredAt" FROM "FailedActions" ORDER BY "occurredAt" DESC LIMIT 10' }),
             zite.sql({ query: `SELECT COUNT(*)::int AS "n" FROM "FailedActions" WHERE "occurredAt" >= NOW() - INTERVAL '24 hours'` }),
@@ -133,21 +77,13 @@ export default createEndpoint({
         const cacheHealth = getCacheHealth();
         const cache = {
             status: 'ok',
-            message: `Embedded Redis Cache active · ${cacheHealth.cachedKeysCount} keys cached (${cacheHealth.hits} hits, ${cacheHealth.hitRatio} hit ratio, latency ${cacheHealth.estimatedLatency}). Zero-config in-memory engine.`,
-            code: 'redis_embedded_active',
+            message: `Process-local memory cache active · ${cacheHealth.cachedKeysCount} keys (${cacheHealth.hits} hits, ${cacheHealth.hitRatio} hit ratio). Cache latency is not measured as PostgreSQL latency.`,
+            code: 'process_memory_cache_active',
         };
 
-        let indexingSql = '';
-        try {
-            const indexSqlPath = path.resolve(__dirname, '../../../supabase/latency_indexing_schema.sql');
-            if (fs.existsSync(indexSqlPath)) indexingSql = fs.readFileSync(indexSqlPath, 'utf8');
-        } catch {}
-
         const indexing = {
-            status: 'ok',
-            message: 'Zero-downtime composite indexes available for attendance, employees, payslips, leaves, and sinking fund.',
-            sqlFix: indexingSql,
-            sqlUrl: 'https://supabase.com/dashboard/project/xurvumenaszahorrxhxf/sql/new',
+            status: 'warning',
+            message: 'Installed indexes, pg_stat_statements, and query plans have not been inspected; database latency is unverified.',
         };
 
         return { database, security, cache, indexing, failures, failuresLast24h: Number(countRes.rows[0]?.n ?? 0) };

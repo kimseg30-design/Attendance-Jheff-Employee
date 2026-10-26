@@ -48,8 +48,11 @@ export default function GeneratePayrollDialog({ open, onOpenChange }) {
     }
     const run = useMutation({
         mutationFn: () => generatePayroll({ periodStart: toISODate(start), periodEnd: toISODate(end), periodLabel: label, frequency: freq, benefits }),
-        onSuccess: (r) => {
-            qc.invalidateQueries();
+        onSuccess: async (r) => {
+            await Promise.all([
+                qc.invalidateQueries({ queryKey: ['records', 'payslips'] }),
+                qc.invalidateQueries({ queryKey: ['dashboard'] }),
+            ]);
             toast.success(`Generated ${r.created} payslip${r.created === 1 ? '' : 's'}${r.skipped ? ` · ${r.skipped} already existed` : ''}`);
             onOpenChange(false);
         },

@@ -1,8 +1,7 @@
-// Embedded Redis-Compatible In-Memory Cache Engine
-// Zero-configuration: Works instantly without requiring REDIS_URL, host, port, or password.
-// Provides sub-millisecond (< 0.1ms) latency, TTL expiration, tag-based cache invalidation, and LRU eviction.
+// Process-local in-memory cache. It is not Redis and its timings do not represent database latency.
+// Supports TTL expiration, tag-based invalidation, and LRU eviction.
 
-class EmbeddedRedisEngine {
+class ProcessMemoryCacheEngine {
   constructor() {
     this.store = new Map(); // key -> { value, expiresAt, accessedAt, tag }
     this.sets = new Map();  // setKey -> Set of member keys
@@ -184,8 +183,8 @@ class EmbeddedRedisEngine {
   }
 }
 
-// Global Singleton Embedded Redis Instance (Zero external setup required)
-export const redis = new EmbeddedRedisEngine();
+// One process-local cache instance; no external Redis service is used.
+export const redis = new ProcessMemoryCacheEngine();
 
 /**
  * Get item from cache
@@ -255,7 +254,7 @@ export async function invalidateCacheTag(tag) {
 }
 
 /**
- * Get comprehensive health and performance metrics for the Redis cache
+ * Get process-local cache counters. These do not measure network or database latency.
  */
 export function getCacheHealth() {
   const totalQueries = redis.stats.hits + redis.stats.misses;
@@ -263,14 +262,12 @@ export function getCacheHealth() {
 
   return {
     status: 'ok',
-    engine: 'Embedded Redis Engine',
-    redisConnected: true,
+    engine: 'Process-local memory cache',
     cachedKeysCount: redis.store.size,
     hits: redis.stats.hits,
     misses: redis.stats.misses,
     writes: redis.stats.writes,
     hitRatio: `${hitRatio}%`,
-    estimatedLatency: '< 0.1 ms',
     zeroConfig: true,
   };
 }

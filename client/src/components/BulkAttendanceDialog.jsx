@@ -95,14 +95,20 @@ export default function BulkAttendanceDialog({ open, onOpenChange, employees, la
             employeeIds: [...selected], workDate: dateStr, status, dayType, timeIn, timeOut, lateMinutes: lateFrom(timeIn),
         }),
         onSuccess: async (r) => {
-            qc.invalidateQueries();
+            await Promise.all([
+                qc.invalidateQueries({ queryKey: ['records', 'attendance'] }),
+                qc.invalidateQueries({ queryKey: ['records', 'employees'] }),
+                qc.invalidateQueries({ queryKey: ['dashboard'] }),
+            ]);
             toast.success(`Updated attendance for ${r.created} employees (zero duplicates created)`);
             onOpenChange(false);
             try {
-                const refreshed = await Promise.all([...selected].map((employeeId) => syncDraftPayrollAttendance({ employeeId, workDate: dateStr })));
-                const updated = refreshed.reduce((sum, x) => sum + x.updated, 0);
-                if (updated)
+                const refreshed = await syncDraftPayrollAttendance({ employeeIds: [...selected], workDate: dateStr });
+                const updated = refreshed.updated;
+                if (updated) {
+                    await qc.invalidateQueries({ queryKey: ['records', 'payslips'] });
                     toast.success(`Refreshed ${updated} draft payroll record${updated === 1 ? '' : 's'}`);
+                }
             } catch {
                 toast.error('Attendance logged, but some draft payroll records may need refreshing.');
             }

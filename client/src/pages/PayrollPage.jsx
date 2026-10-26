@@ -174,7 +174,16 @@ export default function PayrollPage() {
     const qc = useQueryClient();
     const release = useMutation({
         mutationFn: (ids) => releasePayslips({ ids }),
-        onSuccess: (r) => { qc.invalidateQueries(); toast.success(`Released ${r.released} payslip${r.released === 1 ? '' : 's'} · balances updated`); },
+        onSuccess: async (r) => {
+            await Promise.all([
+                qc.invalidateQueries({ queryKey: ['records', 'payslips'] }),
+                qc.invalidateQueries({ queryKey: ['records', 'cashAdvances'] }),
+                qc.invalidateQueries({ queryKey: ['sf'] }),
+                qc.invalidateQueries({ queryKey: ['sfAudit'] }),
+                qc.invalidateQueries({ queryKey: ['dashboard'] }),
+            ]);
+            toast.success(`Released ${r.released} payslip${r.released === 1 ? '' : 's'} · balances updated`);
+        },
         onError: (e) => toast.error(e.message),
     });
     const { isAdmin } = useRole();

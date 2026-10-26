@@ -33,7 +33,7 @@ export default createEndpoint({
         await requireAdmin(context.user);
         const [emps, att, advances, existing, sfLoans, sfPayments, sfMembers] = await Promise.all([
             db.employees.findAll({ filters: { active: true }, limit: 2000 }),
-            db.attendance.findAll({ filters: { workDate: { gte: input.periodStart } }, limit: 2000 }),
+            db.attendance.findAll({ filters: { workDate: { gte: input.periodStart, lte: input.periodEnd } }, limit: 2000 }),
             db.cashAdvances.findAll({ filters: { status: 'Active' }, limit: 2000 }),
             db.payslips.findAll({ filters: { periodStart: input.periodStart }, limit: 2000 }),
             sf.list('loans'),
