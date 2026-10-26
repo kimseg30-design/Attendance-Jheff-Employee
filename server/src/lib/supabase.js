@@ -253,6 +253,7 @@ function isValidSupabaseConfig(url, key) {
 // Reads use a process-local cache. Cache hits do not measure PostgreSQL execution time.
 export async function request(path, init = {}) {
     const method = (init.method || 'GET').toUpperCase();
+    const requestStartedAt = Date.now();
     const isRead = method === 'GET';
 
     const match = path.match(/\/rest\/v1\/([^/?#]+)/);
@@ -261,6 +262,7 @@ export async function request(path, init = {}) {
     if (isRead) {
         const cached = await getCached(path);
         if (cached !== null) {
+            console.info(`[db-timing] ${method} ${path.split('?')[0]} ${Date.now() - requestStartedAt}ms source=process-cache`);
             return cached;
         }
     } else {
@@ -275,6 +277,7 @@ export async function request(path, init = {}) {
     const hasConfig = isValidSupabaseConfig(rawUrl, key);
 
     if (!hasConfig) {
+        console.warn(`[db-timing] ${method} ${path.split('?')[0]} source=memory-fallback reason=missing-config`);
         const memoryRes = handleMemoryRequest(path, init);
         if (isRead && memoryRes !== null) {
             await setCached(path, memoryRes, 15, tblName);
@@ -292,6 +295,7 @@ export async function request(path, init = {}) {
         });
         const text = await res.text();
         if (!res.ok) {
+            console.warn(`[db-timing] ${method} ${path.split('?')[0]} ${Date.now() - requestStartedAt}ms source=memory-fallback reason=supabase-${res.status}`);
             if (res.status === 401 || res.status === 403) {
                 console.warn(`[Supabase] Permission denied (${res.status}) on ${method} ${path}. Use a server-only key with the secure RLS configuration; do not grant broad anon access.`);
             } else {
@@ -304,11 +308,13 @@ export async function request(path, init = {}) {
             return fallbackRes;
         }
         const data = text ? JSON.parse(text) : null;
+        console.info(`[db-timing] ${method} ${path.split('?')[0]} ${Date.now() - requestStartedAt}ms source=supabase status=${res.status}`);
         if (isRead && data !== null) {
             await setCached(path, data, 30, tblName);
         }
         return data;
     } catch (e) {
+        console.warn(`[db-timing] ${method} ${path.split('?')[0]} ${Date.now() - requestStartedAt}ms source=memory-fallback reason=network-error`);
         console.warn(`[Supabase] Network error for ${path}: ${e.message}, using mock fallback.`);
         const fallbackRes = handleMemoryRequest(path, init);
         if (isRead && fallbackRes !== null) {

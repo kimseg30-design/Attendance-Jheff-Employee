@@ -9,12 +9,19 @@ export default createEndpoint({
     inputSchema: z.object({ table: z.enum(TABLES) }),
     outputSchema: z.object({ records: z.array(z.record(z.any())) }),
     execute: withLog('listRecords', async ({ input, context }) => {
+        // Keep this guard at runtime as the Express handler currently falls back to
+        // the raw request body when schema validation fails. That turns an
+        // invalid/stale client table name into an opaque "findAll" TypeError.
+        const client = TABLES.includes(input?.table) ? tableClient(input.table) : null;
+        if (!client || typeof client.findAll !== 'function') {
+            throw new Error(`Unsupported records table: ${String(input?.table ?? '')}`);
+        }
         const role = await getRole(context.user);
         if (role === 'Admin' || role === 'Viewer')
             await requireMember(context.user);
         else
             await requireTableAccess(context.user, input.table, 'read');
-        const { records } = await tableClient(input.table).findAll({ limit: 2000 });
+        const { records } = await client.findAll({ limit: 2000 });
         if (role === 'Editor' && input.table === 'employees') {
             return { records: records.map((r) => ({ id: r.id, fullName: r.fullName, active: r.active })) };
         }
