@@ -139,10 +139,12 @@ export async function logout() {
   window.location.assign('/login');
 }
 
-export function loginAsAdmin() {
+export function loginAsAdmin(adminEmail = 'kimsegarra4@gmail.com') {
   if (typeof window !== 'undefined') {
     localStorage.setItem('sahod_admin_session', 'true');
+    localStorage.setItem('sahod_demo_email', adminEmail);
     localStorage.removeItem('sahod_logged_out');
+    localStorage.removeItem('sahod_simulated_role');
   }
   const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
   window.location.assign(redirect);

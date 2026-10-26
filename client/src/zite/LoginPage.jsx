@@ -4,13 +4,15 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { ShieldCheck, Mail, Lock, AlertCircle, CheckCircle2, ExternalLink, Copy, Check } from 'lucide-react';
+import { loginAsAdmin } from './auth';
+import { ShieldCheck, Mail, Lock, AlertCircle, CheckCircle2, ExternalLink, Copy, Check, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
   const [mode, setMode] = useState('password'); // 'password' | 'magic-link'
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('kimsegarra4@gmail.com');
   const [password, setPassword] = useState('');
+  const [selectedAdmin, setSelectedAdmin] = useState('kimsegarra4@gmail.com');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -35,6 +37,13 @@ export default function LoginPage() {
       } catch {}
       window.location.assign(redirect);
     };
+
+    // 0. If pre-approved administrator session is already active
+    const adminSession = typeof window !== 'undefined' ? localStorage.getItem('sahod_admin_session') : null;
+    if (adminSession === 'true') {
+      navigateToApp();
+      return;
+    }
 
     // 1. If already authenticated or restored
     supabase.auth.getSession().then(({ data }) => {
@@ -234,6 +243,67 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* Pre-approved Administrator Direct Access */}
+        <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-3.5 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-foreground">Pre-approved Administrator</div>
+                <div className="text-[11px] text-muted-foreground">Pre-configured system admin role</div>
+              </div>
+            </div>
+            <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+              Verified
+            </span>
+          </div>
+
+          <Button
+            type="button"
+            className="w-full flex items-center justify-center gap-2 h-10 font-semibold text-sm shadow-sm"
+            onClick={() => loginAsAdmin(selectedAdmin)}
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Enter as Administrator ({selectedAdmin})
+          </Button>
+
+          <div className="flex items-center justify-between pt-0.5 px-0.5 text-[11px] text-muted-foreground">
+            <span>Select Admin account:</span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAdmin('kimsegarra4@gmail.com');
+                  setEmail('kimsegarra4@gmail.com');
+                }}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                  selectedAdmin === 'kimsegarra4@gmail.com'
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'bg-muted hover:bg-muted/80 text-foreground'
+                }`}
+              >
+                kimsegarra4
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAdmin('kimsegarra410@gmail.com');
+                  setEmail('kimsegarra410@gmail.com');
+                }}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                  selectedAdmin === 'kimsegarra410@gmail.com'
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'bg-muted hover:bg-muted/80 text-foreground'
+                }`}
+              >
+                kimsegarra410
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Primary Google Sign-In Button */}
         <div className="space-y-3">
           <Button
@@ -271,7 +341,7 @@ export default function LoginPage() {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-card px-3 text-muted-foreground font-medium">
-              Or use Email
+              Or Sign in with Email Credentials
             </span>
           </div>
         </div>
