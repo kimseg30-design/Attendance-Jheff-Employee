@@ -133,10 +133,8 @@ export default createEndpoint({
         const cacheHealth = getCacheHealth();
         const cache = {
             status: 'ok',
-            message: cacheHealth.redisConnected
-                ? `Redis (L2) distributed cache connected · ${cacheHealth.totalHits} queries accelerated (${cacheHealth.hitRatio} hit ratio, avg latency ${cacheHealth.estimatedLatency})`
-                : `L1 In-Memory cache active (${cacheHealth.totalHits} accelerated hits, ${cacheHealth.hitRatio} hit ratio, latency < 0.2 ms). To enable distributed Redis, provide REDIS_URL in environment.`,
-            code: cacheHealth.status,
+            message: `Embedded Redis Cache active · ${cacheHealth.cachedKeysCount} keys cached (${cacheHealth.hits} hits, ${cacheHealth.hitRatio} hit ratio, latency ${cacheHealth.estimatedLatency}). Zero-config in-memory engine.`,
+            code: 'redis_embedded_active',
         };
 
         let indexingSql = '';

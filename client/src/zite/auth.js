@@ -139,15 +139,19 @@ export async function logout() {
   window.location.assign('/login');
 }
 
-export function loginAsAdmin(adminEmail = 'kimsegarra4@gmail.com') {
+export function loginAsUser(userEmail, redirectPath) {
   if (typeof window !== 'undefined') {
     localStorage.setItem('sahod_admin_session', 'true');
-    localStorage.setItem('sahod_demo_email', adminEmail);
+    localStorage.setItem('sahod_demo_email', userEmail.trim().toLowerCase());
     localStorage.removeItem('sahod_logged_out');
     localStorage.removeItem('sahod_simulated_role');
   }
-  const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
+  const redirect = redirectPath || new URLSearchParams(window.location.search).get('redirect') || '/';
   window.location.assign(redirect);
+}
+
+export function loginAsAdmin(adminEmail = 'kimsegarra4@gmail.com') {
+  loginAsUser(adminEmail);
 }
 
 export async function updateProfile(data) {

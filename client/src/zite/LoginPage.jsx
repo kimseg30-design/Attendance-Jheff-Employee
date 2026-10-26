@@ -4,13 +4,16 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { loginAsAdmin } from './auth';
-import { ShieldCheck, Mail, Lock, AlertCircle, CheckCircle2, ExternalLink, Copy, Check, Sparkles } from 'lucide-react';
+import { loginAsAdmin, loginAsUser } from './auth';
+import { ShieldCheck, Mail, Lock, AlertCircle, CheckCircle2, ExternalLink, Copy, Check, Sparkles, UserCheck } from 'lucide-react';
 
 export default function LoginPage() {
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const invitedEmailParam = searchParams.get('email') || '';
+
   const [mode, setMode] = useState('password'); // 'password' | 'magic-link'
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('kimsegarra4@gmail.com');
+  const [email, setEmail] = useState(invitedEmailParam || 'kimsegarra4@gmail.com');
   const [password, setPassword] = useState('');
   const [selectedAdmin, setSelectedAdmin] = useState('kimsegarra4@gmail.com');
   const [loading, setLoading] = useState(false);
@@ -242,6 +245,41 @@ export default function LoginPage() {
             Sign in with your Google Account or Supabase credentials.
           </p>
         </div>
+
+        {/* Invited User Access Card (Shown when opening invite link) */}
+        {invitedEmailParam && (
+          <div className="rounded-xl border-2 border-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/40 p-4 space-y-3 shadow-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
+                  <UserCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-emerald-950 dark:text-emerald-100">Invitation Link Detected</div>
+                  <div className="text-[11px] text-emerald-800 dark:text-emerald-300">
+                    Welcome! You were invited as <b>{invitedEmailParam}</b>
+                  </div>
+                </div>
+              </div>
+              <span className="inline-flex items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+                Invited User
+              </span>
+            </div>
+
+            <Button
+              type="button"
+              className="w-full flex items-center justify-center gap-2 h-11 font-semibold text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+              onClick={() => loginAsUser(invitedEmailParam)}
+            >
+              <UserCheck className="h-4 w-4" />
+              Accept Invitation & Access App ({invitedEmailParam})
+            </Button>
+
+            <p className="text-[11px] text-center text-emerald-800 dark:text-emerald-300">
+              One-click entry activates your invited role and opens your assigned modules immediately.
+            </p>
+          </div>
+        )}
 
         {/* Pre-approved Administrator Direct Access */}
         <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-3.5 space-y-2.5">
