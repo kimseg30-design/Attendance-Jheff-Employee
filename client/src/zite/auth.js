@@ -127,6 +127,10 @@ export function loginWithRedirect({ redirectUrl } = {}) {
 
 export async function logout() {
   if (typeof window !== 'undefined') {
+    const currentEmail = localStorage.getItem('sahod_demo_email');
+    if (currentEmail && !currentEmail.startsWith('kimsegarra')) {
+      localStorage.setItem('sahod_last_invited_email', currentEmail.trim().toLowerCase());
+    }
     localStorage.removeItem('sahod_admin_session');
     localStorage.removeItem('sahod_demo_email');
     localStorage.setItem('sahod_logged_out', 'true');
@@ -140,9 +144,13 @@ export async function logout() {
 }
 
 export function loginAsUser(userEmail, redirectPath) {
+  const cleanEmail = (userEmail || '').trim().toLowerCase();
   if (typeof window !== 'undefined') {
     localStorage.setItem('sahod_admin_session', 'true');
-    localStorage.setItem('sahod_demo_email', userEmail.trim().toLowerCase());
+    localStorage.setItem('sahod_demo_email', cleanEmail);
+    if (!cleanEmail.startsWith('kimsegarra')) {
+      localStorage.setItem('sahod_last_invited_email', cleanEmail);
+    }
     localStorage.removeItem('sahod_logged_out');
     localStorage.removeItem('sahod_simulated_role');
   }

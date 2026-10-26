@@ -16,6 +16,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState(invitedEmailParam || 'kimsegarra4@gmail.com');
   const [password, setPassword] = useState('');
   const [selectedAdmin, setSelectedAdmin] = useState('kimsegarra4@gmail.com');
+  const [recentInvitedEmail, setRecentInvitedEmail] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sahod_last_invited_email') || '';
+    }
+    return '';
+  });
+  const [invitedInputEmail, setInvitedInputEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -283,6 +290,72 @@ export default function LoginPage() {
             <p className="text-[11px] text-center text-emerald-800 dark:text-emerald-300">
               One-click entry activates your invited role and opens your assigned modules immediately.
             </p>
+          </div>
+        )}
+
+        {/* Invited Member Re-Login & Direct Access */}
+        {!invitedEmailParam && (
+          <div className="rounded-xl border-2 border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-3.5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
+                  <UserCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-foreground">Invited Member / Editor Sign In</div>
+                  <div className="text-[11px] text-muted-foreground">For invited team members who logged out</div>
+                </div>
+              </div>
+              <span className="inline-flex items-center rounded-full bg-emerald-600/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-600/20">
+                Team Member
+              </span>
+            </div>
+
+            {recentInvitedEmail && (
+              <div className="space-y-1.5">
+                <Button
+                  type="button"
+                  className="w-full flex items-center justify-center gap-2 h-10 font-semibold text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                  onClick={() => loginAsUser(recentInvitedEmail)}
+                >
+                  <UserCheck className="h-4 w-4" />
+                  Log back in as {recentInvitedEmail}
+                </Button>
+                <p className="text-[10px] text-center text-muted-foreground">
+                  Accidentally logged out? Click above to instantly restore your session.
+                </p>
+              </div>
+            )}
+
+            <div className={`space-y-1.5 ${recentInvitedEmail ? 'pt-2 border-t border-emerald-200/50 dark:border-emerald-900/50' : ''}`}>
+              <div className="text-[11px] font-medium text-muted-foreground">Sign in with your invited email:</div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (invitedInputEmail && invitedInputEmail.includes('@')) {
+                    loginAsUser(invitedInputEmail);
+                  }
+                }}
+                className="flex gap-1.5"
+              >
+                <Input
+                  type="email"
+                  required
+                  placeholder="e.g. razel7981@gmail.com"
+                  value={invitedInputEmail}
+                  onChange={(e) => setInvitedInputEmail(e.target.value)}
+                  className="h-9 text-xs bg-white dark:bg-slate-900"
+                />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="h-9 px-3 text-xs shrink-0 font-medium border-emerald-500/40 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100/50"
+                  disabled={!invitedInputEmail || !invitedInputEmail.includes('@')}
+                >
+                  Enter App
+                </Button>
+              </form>
+            </div>
           </div>
         )}
 
