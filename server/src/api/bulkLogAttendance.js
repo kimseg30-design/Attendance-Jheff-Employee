@@ -19,24 +19,74 @@ export default createEndpoint({
     outputSchema: z.object({ created: z.number() }),
     execute: withLog('bulkLogAttendance', async ({ input, context }) => {
         await requireTableAccess(context.user, 'attendance', 'write');
-        const records = input.employeeIds.map((id) => ({
-            employee: [id],
-            workDate: input.workDate,
-            status: input.status,
-            dayType: input.dayType,
-            timeIn: ['Present', 'Halfday'].includes(input.status) ? input.timeIn ?? null : null,
-            timeOut: ['Present', 'Halfday'].includes(input.status) ? input.timeOut ?? null : null,
-            lateMinutes: ['Present', 'Halfday'].includes(input.status) ? input.lateMinutes ?? 0 : 0,
-            overtimeHours: 0,
-            nightDiffHours: 0,
-        }));
-        for (let i = 0; i < records.length; i += 100) {
-            await db.attendance.bulkCreate({ records: records.slice(i, i + 100) });
+
+        // Fetch existing attendance records for this workDate to strictly avoid duplicates
+        const existing = await db.attendance.findAll({ filters: { workDate: input.workDate }, limit: 2000 });
+        const existingByEmp = new Map();
+        const duplicatesToDelete = [];
+
+        for (const rec of existing.records || []) {
+            const empId = Array.isArray(rec.employee) ? rec.employee[0] : rec.employee;
+            const date = String(rec.workDate || '').slice(0, 10);
+            if (empId && date === input.workDate) {
+                if (!existingByEmp.has(empId)) {
+                    existingByEmp.set(empId, rec);
+                } else {
+                    // Pre-existing duplicate, queue for removal
+                    duplicatesToDelete.push(rec.id);
+                }
+            }
         }
+
+        // Clean up any pre-existing duplicates for this date
+        for (const dupId of duplicatesToDelete) {
+            try {
+                await db.attendance.delete({ id: dupId });
+            } catch (err) {
+                console.warn('Failed to prune duplicate attendance record', dupId, err);
+            }
+        }
+
+        const toUpdate = [];
+        const toCreate = [];
+
+        for (const id of input.employeeIds) {
+            const record = {
+                employee: [id],
+                workDate: input.workDate,
+                status: input.status,
+                dayType: input.dayType,
+                timeIn: ['Present', 'Halfday'].includes(input.status) ? input.timeIn ?? null : null,
+                timeOut: ['Present', 'Halfday'].includes(input.status) ? input.timeOut ?? null : null,
+                lateMinutes: ['Present', 'Halfday'].includes(input.status) ? input.lateMinutes ?? 0 : 0,
+                overtimeHours: 0,
+                nightDiffHours: 0,
+            };
+
+            if (existingByEmp.has(id)) {
+                toUpdate.push({ id: existingByEmp.get(id).id, record });
+            } else {
+                toCreate.push(record);
+            }
+        }
+
+        // Update existing records in place to avoid duplicate rows
+        for (const item of toUpdate) {
+            await db.attendance.update({ id: item.id, record: item.record });
+        }
+
+        // Create new records only for employees who do not already have one
+        for (let i = 0; i < toCreate.length; i += 100) {
+            await db.attendance.bulkCreate({ records: toCreate.slice(i, i + 100) });
+        }
+
         if (input.status === 'Paid Leave') {
-            for (const r of records)
+            for (const item of toUpdate)
+                await syncLeaveCredits('attendance', undefined, item.record);
+            for (const r of toCreate)
                 await syncLeaveCredits('attendance', undefined, r);
         }
-        return { created: records.length };
+
+        return { created: input.employeeIds.length };
     }),
 });

@@ -6,7 +6,7 @@ import BulkAttendanceDialog from '../components/BulkAttendanceDialog';
 import AttendanceBulkActions from '../components/AttendanceBulkActions';
 import CrudPage from '../components/CrudPage';
 import StatusBadge from '../components/StatusBadge';
-import { useNameMap } from '../services/records';
+import { useNameMap, useRecords } from '../services/records';
 import { fmtDate, firstId } from '../utils/format';
 import { syncDraftPayrollAttendance } from '@/zite/api';
 import { toast } from 'sonner';
@@ -64,6 +64,25 @@ export default function AttendancePage() {
         overtimeAmount: v.overtimeAmount == null || v.overtimeAmount === '' ? 0 : Number(v.overtimeAmount),
         nightDiffHours: v.nightDiffHours == null || v.nightDiffHours === '' ? 0 : Number(v.nightDiffHours),
     }), []);
+    const { data: attendanceList = [] } = useRecords('attendance');
+    const validate = useCallback((values, editing) => {
+        const empId = firstId(values.employee);
+        const date = String(values.workDate ?? '').slice(0, 10);
+        if (!empId || !date) return {};
+        const match = attendanceList.find((a) => {
+            const aEmp = firstId(a.employee);
+            const aDate = String(a.workDate ?? '').slice(0, 10);
+            return aEmp === empId && aDate === date && a.id !== editing?.id;
+        });
+        if (match) {
+            const empName = emps.map[empId] ?? 'This employee';
+            return {
+                workDate: `Attendance for ${empName} on ${date} already exists (${match.status}). Duplication is strictly prevented.`,
+            };
+        }
+        return {};
+    }, [attendanceList, emps.map]);
+
     const afterSave = useCallback((v) => {
         if (!isAdmin)
             return;
@@ -76,7 +95,7 @@ export default function AttendancePage() {
                 toast.success(`Updated ${result.updated} draft payroll record${result.updated === 1 ? '' : 's'} from attendance changes`);
         }).catch((error) => toast.error(`Attendance saved, but draft payroll refresh failed: ${error.message}`));
     }, [isAdmin]);
-    return <CrudPage table="attendance" title="Attendance" singular="Log" description={`Daily time records. Shift starts ${SHIFT_START} AM — lates are computed automatically.`} columns={columns} fields={fields} filter={filter} beforeSave={beforeSave} afterSave={afterSave} selectionActions={selectionActions} headerActions={<>
+    return <CrudPage table="attendance" title="Attendance" singular="Log" description={`Daily time records with strict deduplication (one log per employee per date). Shift starts ${SHIFT_START} AM — lates are computed automatically.`} columns={columns} fields={fields} filter={filter} validate={validate} beforeSave={beforeSave} afterSave={afterSave} selectionActions={selectionActions} headerActions={<>
       <Button variant="outline" onClick={() => setBulkOpen(true)}><ListChecks className="mr-2 h-4 w-4"/>Bulk log</Button>
       <BulkAttendanceDialog open={bulkOpen} onOpenChange={setBulkOpen} employees={emps.list} lateFrom={lateFrom}/>
     </>} toolbar={<Select value={status} onValueChange={setStatus}>

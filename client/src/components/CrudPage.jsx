@@ -38,7 +38,7 @@ export default function CrudPage(p) {
         {canEdit && <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="mr-2 h-4 w-4"/>Add {p.singular}</Button>}
       </>}/>
       <DataTable columns={columns} data={rows} loading={isLoading} toolbar={p.toolbar} selectionActions={canEdit ? p.selectionActions : undefined} searchPlaceholder={`Search ${p.title.toLowerCase()}…`}/>
-      <RecordDialog open={open} onOpenChange={setOpen} title={`${editing ? 'Edit' : 'New'} ${p.singular}`} fields={p.fields} initial={editing} saving={save.isPending} onSubmit={(values) => save.mutate({ id: editing?.id, record: p.beforeSave ? p.beforeSave(values) : values }, {
+      <RecordDialog open={open} onOpenChange={setOpen} title={`${editing ? 'Edit' : 'New'} ${p.singular}`} fields={p.fields} initial={editing} saving={save.isPending} validate={p.validate} onSubmit={(values) => save.mutate({ id: editing?.id, record: p.beforeSave ? p.beforeSave(values) : values }, {
             onSuccess: () => {
                 setOpen(false);
                 toast.success(`${p.singular} saved`);

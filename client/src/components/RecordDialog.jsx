@@ -14,16 +14,22 @@ function toForm(fields, rec) {
         return [f.key, v ?? f.defaultValue ?? ''];
     }));
 }
-export default function RecordDialog({ open, onOpenChange, title, fields, initial, saving, onSubmit }) {
+export default function RecordDialog({ open, onOpenChange, title, fields, initial, saving, onSubmit, validate: customValidate }) {
     const [values, setValues] = useState({});
     const [errors, setErrors] = useState({});
     useEffect(() => {
         if (open) {
-            setValues(toForm(fields, initial));
-            setErrors({});
+            const initialValues = toForm(fields, initial);
+            setValues(initialValues);
+            if (customValidate) {
+                setErrors(customValidate(initialValues, initial) || {});
+            } else {
+                setErrors({});
+            }
         }
-    }, [open, initial, fields]);
-    const validate = (v) => {
+    }, [open, initial, fields, customValidate]);
+
+    const runValidation = (v) => {
         const e = {};
         for (const f of fields) {
             if (f.required && (v[f.key] === '' || v[f.key] == null))
@@ -33,11 +39,28 @@ export default function RecordDialog({ open, onOpenChange, title, fields, initia
             if (f.type === 'time' && v[f.key] && !/^\d{2}:\d{2}$/.test(v[f.key]))
                 e[f.key] = 'Use HH:MM';
         }
+        if (customValidate) {
+            const custom = customValidate(v, initial);
+            if (custom) {
+                Object.assign(e, custom);
+            }
+        }
         return e;
     };
-    const isValid = Object.keys(validate(values)).length === 0;
+
+    const currentErrors = runValidation(values);
+    const isValid = Object.keys(currentErrors).length === 0;
+
+    const handleFieldChange = (key, val) => {
+        setValues((s) => {
+            const next = { ...s, [key]: val };
+            setErrors(runValidation(next));
+            return next;
+        });
+    };
+
     const submit = () => {
-        const e = validate(values);
+        const e = runValidation(values);
         setErrors(e);
         if (Object.keys(e).length)
             return;
@@ -57,7 +80,7 @@ export default function RecordDialog({ open, onOpenChange, title, fields, initia
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
         <div className="grid gap-4 py-2 sm:grid-cols-2">
-          {fields.map((f) => (<FieldInput key={f.key} field={f} value={values[f.key]} error={errors[f.key]} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}/>))}
+          {fields.map((f) => (<FieldInput key={f.key} field={f} value={values[f.key]} error={errors[f.key] || currentErrors[f.key]} onChange={(v) => handleFieldChange(f.key, v)}/>))}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

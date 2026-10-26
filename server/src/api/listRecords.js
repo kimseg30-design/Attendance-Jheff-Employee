@@ -18,6 +18,19 @@ export default createEndpoint({
         if (role === 'Editor' && input.table === 'employees') {
             return { records: records.map((r) => ({ id: r.id, fullName: r.fullName, active: r.active })) };
         }
+        if (input.table === 'attendance') {
+            const seen = new Map();
+            for (const r of records) {
+                const empId = Array.isArray(r.employee) ? r.employee[0] : r.employee;
+                const date = String(r.workDate || '').slice(0, 10);
+                if (!empId || !date) continue;
+                const key = `${empId}_${date}`;
+                if (!seen.has(key)) {
+                    seen.set(key, r);
+                }
+            }
+            return { records: Array.from(seen.values()) };
+        }
         return { records };
     }),
 });

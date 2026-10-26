@@ -313,10 +313,21 @@ const initialUserRoles = [
   { id: crypto.randomUUID(), user: 'usr_admin_orig', label: 'kimsegarra516@gmail.com', role: 'Admin', createdAt: new Date().toISOString() },
 ];
 
+export function dedupeAttendanceRecords(list = []) {
+  const map = new Map();
+  for (const item of list) {
+    const empId = Array.isArray(item.employee) ? item.employee[0] : (item.employee || item.employee_id);
+    const date = String(item.workDate || item.work_date || '').slice(0, 10);
+    if (!empId || !date) continue;
+    map.set(`${empId}_${date}`, item);
+  }
+  return Array.from(map.values());
+}
+
 export const memoryDb = {
   departments: [...initialDepartments],
   employees: [...initialEmployees],
-  attendance: [...initialAttendance],
+  attendance: dedupeAttendanceRecords(initialAttendance),
   leaves: [...initialLeaves],
   cashAdvances: [...initialCashAdvances],
   payslips: [...initialPayslips],
@@ -335,12 +346,13 @@ export const memoryDb = {
 
 export function getTableRecords(table) {
   const norm = table === 'cash_advances' ? 'cashAdvances' : table;
-  return memoryDb[norm] || [];
+  const records = memoryDb[norm] || [];
+  return norm === 'attendance' ? dedupeAttendanceRecords(records) : records;
 }
 
 export function setTableRecords(table, records) {
   const norm = table === 'cash_advances' ? 'cashAdvances' : table;
-  memoryDb[norm] = records;
+  memoryDb[norm] = norm === 'attendance' ? dedupeAttendanceRecords(records) : records;
 }
 
 export function computeMockDashboard() {

@@ -37,15 +37,24 @@ export default createEndpoint({
         const start = format(addDays(parseISO(date), -13), 'yyyy-MM-dd');
         const [d, att, slips, caList] = await Promise.all([
             rpc('get_dashboard'),
-            request(`/rest/v1/attendance?select=work_date,status,day_type&work_date=gte.${start}&work_date=lte.${date}&limit=20000`),
+            request(`/rest/v1/attendance?select=work_date,status,day_type,employee_id&work_date=gte.${start}&work_date=lte.${date}&limit=20000`),
             request(`/rest/v1/payslips?select=period_label,period_end,net_pay&period_end=lte.${date}&order=period_end.desc&limit=5000`),
             request(`/rest/v1/cash_advances?select=type,balance,status&status=eq.Active&limit=5000`),
         ]);
         const days = {};
         for (let i = 0; i < 14; i++)
             days[format(addDays(parseISO(start), i), 'yyyy-MM-dd')] = { present: 0, halfday: 0, restDay: 0, absent: 0 };
+
+        // Deduplicate attendance entries strictly by (employee, workDate)
+        const seenAttendance = new Set();
         for (const r of (att || [])) {
-            const k = String(r.work_date).slice(0, 10);
+            const empId = r.employee_id || (Array.isArray(r.employee) ? r.employee[0] : r.employee);
+            const k = String(r.work_date || r.workDate || '').slice(0, 10);
+            if (empId) {
+                const uniqueKey = `${empId}_${k}`;
+                if (seenAttendance.has(uniqueKey)) continue;
+                seenAttendance.add(uniqueKey);
+            }
             if (!days[k])
                 continue;
             const status = String(r.status || '').trim();

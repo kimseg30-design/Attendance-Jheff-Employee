@@ -2,7 +2,7 @@
 // Keeps camelCase fields, link fields as [id] arrays, findAll/findOne/create/update/delete/bulkCreate.
 import './loadEnv.js';
 import { ZiteError } from '../zite/backend.js';
-import { memoryDb, computeMockDashboard } from './memoryStore.js';
+import { memoryDb, computeMockDashboard, dedupeAttendanceRecords } from './memoryStore.js';
 import { getCached, setCached, invalidateCacheTag } from './cache.js';
 
 const LINKS = { employee: 'employee_id', department: 'department_id' };
@@ -88,6 +88,9 @@ function handleMemoryRequest(path, init = {}) {
     if (!memoryDb[memoryKey]) memoryDb[memoryKey] = [];
 
     if (method === 'GET') {
+        if (memoryKey === 'attendance') {
+            memoryDb.attendance = dedupeAttendanceRecords(memoryDb.attendance);
+        }
         let items = [...memoryDb[memoryKey]];
 
         // Apply filters from searchParams
@@ -145,10 +148,31 @@ function handleMemoryRequest(path, init = {}) {
         const inserted = [];
 
         for (const r of records) {
+            const rowData = fromRow(r);
+            if (memoryKey === 'attendance') {
+                const empId = Array.isArray(rowData.employee) ? rowData.employee[0] : (rowData.employee || rowData.employee_id);
+                const workDate = String(rowData.workDate || rowData.work_date || '').slice(0, 10);
+                const existingIdx = memoryDb.attendance.findIndex((i) => {
+                    const iEmp = Array.isArray(i.employee) ? i.employee[0] : (i.employee || i.employee_id);
+                    const iDate = String(i.workDate || i.work_date || '').slice(0, 10);
+                    return iEmp === empId && iDate === workDate;
+                });
+                if (existingIdx >= 0) {
+                    const existingId = memoryDb.attendance[existingIdx].id;
+                    memoryDb.attendance[existingIdx] = {
+                        ...memoryDb.attendance[existingIdx],
+                        ...rowData,
+                        id: existingId,
+                        updatedAt: new Date().toISOString(),
+                    };
+                    inserted.push(itemToDbRow(memoryDb.attendance[existingIdx]));
+                    continue;
+                }
+            }
             const id = r.id || crypto.randomUUID();
             const createdAt = new Date().toISOString();
             // Store internally in camelCase form
-            const item = { ...fromRow(r), id, createdAt };
+            const item = { ...rowData, id, createdAt };
             memoryDb[memoryKey].push(item);
             inserted.push(itemToDbRow(item));
         }
@@ -314,7 +338,9 @@ export function supabaseTable(table) {
         async findAll({ filters, limit = 2000 } = {}) {
             const q = filterQuery(filters);
             const rows = await request(`/rest/v1/${t}?select=*&order=created_at.desc&limit=${limit}${q ? '&' + q : ''}`);
-            return { records: (rows || []).map(fromRow), hasMore: (rows || []).length === limit };
+            const list = (rows || []).map(fromRow);
+            const records = table === 'attendance' ? dedupeAttendanceRecords(list) : list;
+            return { records, hasMore: (rows || []).length === limit };
         },
         async findOne({ id }) {
             const rows = await request(`/rest/v1/${t}?select=*&id=eq.${encodeURIComponent(id)}`);
@@ -336,7 +362,8 @@ export function supabaseTable(table) {
         async bulkCreate({ records }) {
             if (!records.length)
                 return { success: true, records: [] };
-            const rows = await request(`/rest/v1/${t}`, { method: 'POST', body: JSON.stringify(records.map((r) => toRow(table, r))) });
+            const cleanRecords = table === 'attendance' ? dedupeAttendanceRecords(records) : records;
+            const rows = await request(`/rest/v1/${t}`, { method: 'POST', body: JSON.stringify(cleanRecords.map((r) => toRow(table, r))) });
             const list = Array.isArray(rows) ? rows : [rows];
             return { success: true, records: list.map(fromRow) };
         },
