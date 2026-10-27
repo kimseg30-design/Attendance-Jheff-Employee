@@ -11,6 +11,42 @@ const app = express();
 
 app.use(express.json({ limit: '5mb' }));
 
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
+// Simple in-memory rate limiter (per IP)
+const rateBuckets = new Map();
+app.use((req, res, next) => {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const windowMs = 60_000;
+  const max = 120;
+  const bucket = rateBuckets.get(ip) || { count: 0, reset: now + windowMs };
+  if (now > bucket.reset) { bucket.count = 0; bucket.reset = now + windowMs; }
+  bucket.count++;
+  rateBuckets.set(ip, bucket);
+  if (bucket.count > max) {
+    res.status(429).json({ error: 'Too many requests. Please slow down.' });
+    return;
+  }
+  next();
+});
+
+// Request logging
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
+  });
+  next();
+});
+
 async function getUser(req) {
   const token = (req.headers.authorization || '').replace(/^Bearer /, '');
   if (!token || token === 'demo-token' || token === 'mock-token' || !admin?.auth) return undefined;
@@ -30,6 +66,10 @@ async function getUser(req) {
 // Health check endpoint
 app.get(['/api/health', '/health'], (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get(['/api/ready', '/ready'], (_req, res) => {
+  res.json({ status: 'ready', timestamp: new Date().toISOString() });
 });
 
 function resolveEndpointName(req) {
