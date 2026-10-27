@@ -31,7 +31,11 @@ export default function CrudPage(p) {
         </DropdownMenu>
       </div>),
         }], [p.columns, p.rowActions, canEdit]);
-    const rows = useMemo(() => (p.filter ? data.filter(p.filter) : data), [data, p.filter]);
+    const rows = useMemo(() => {
+        const base = p.filter ? data.filter(p.filter) : data;
+        if (!p.sort) return base;
+        return [...base].sort(p.sort);
+    }, [data, p.filter, p.sort]);
     return (<div>
       <PageHeader title={p.title} description={p.description} actions={<>
         {canEdit && p.headerActions}

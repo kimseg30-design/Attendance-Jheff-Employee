@@ -99,7 +99,7 @@ export default function AttendancePage() {
             }
         }).catch((error) => toast.error(`Attendance saved, but draft payroll refresh failed: ${error.message}`));
     }, [isAdmin, qc]);
-    return <CrudPage table="attendance" title="Attendance" singular="Log" description={`Daily time records with strict deduplication (one log per employee per date). Shift starts ${SHIFT_START} AM — lates are computed automatically.`} columns={columns} fields={fields} filter={filter} validate={validate} beforeSave={beforeSave} afterSave={afterSave} selectionActions={selectionActions} headerActions={<>
+    return <CrudPage table="attendance" title="Attendance" singular="Log" description={`Daily time records with strict deduplication (one log per employee per date). Shift starts ${SHIFT_START} AM — lates are computed automatically.`} columns={columns} fields={fields} filter={filter} sort={useCallback((a, b) => { const rank = (s) => (s === 'Present' ? 0 : 1); const r = rank(a.status) - rank(b.status); if (r !== 0) return r; return String(a.workDate ?? '').localeCompare(String(b.workDate ?? '')); }, [])} validate={validate} beforeSave={beforeSave} afterSave={afterSave} selectionActions={selectionActions} headerActions={<>
       <Button variant="outline" onClick={() => setBulkOpen(true)}><ListChecks className="mr-2 h-4 w-4"/>Bulk log</Button>
       <BulkAttendanceDialog open={bulkOpen} onOpenChange={setBulkOpen} employees={emps.list} lateFrom={lateFrom}/>
     </>} toolbar={<Select value={status} onValueChange={setStatus}>
