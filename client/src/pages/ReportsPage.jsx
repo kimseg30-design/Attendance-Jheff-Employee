@@ -68,7 +68,23 @@ export default function ReportsPage() {
             ? ['Employee', 'Period', 'Period Start', 'Period End', 'Status', 'Days Worked', 'Gross Pay', 'SSS', 'PhilHealth', 'Pag-IBIG', 'Withholding Tax', 'Cash Advance Deduction', 'Contribution Deduction', 'Loan Deductions', 'Net Pay']
             : ['Contribution Date', 'Member', 'Payroll Coverage', 'Reference No.', 'Notes', 'Amount'];
 
-    const loading = type === 'attendance' ? attendanceLoading : type === 'payroll' ? payrollLoading : sf.isLoading;
+    const remittance = useMemo(() => {
+        if (type !== 'payroll') return null;
+        const totals = rows.reduce((acc, row) => {
+            const sss = Number(String(row[7] ?? '').replace(/[^0-9.-]/g, '')) || 0;
+            const ph = Number(String(row[8] ?? '').replace(/[^0-9.-]/g, '')) || 0;
+            const pi = Number(String(row[9] ?? '').replace(/[^0-9.-]/g, '')) || 0;
+            acc.sss += sss;
+            acc.ph += ph;
+            acc.pi += pi;
+            return acc;
+        }, { sss: 0, ph: 0, pi: 0 });
+        // Employer share: SSS employer ≈ 2x employee; PhilHealth & Pag-IBIG split equally.
+        const employer = { sss: totals.sss * 2, ph: totals.ph, pi: totals.pi };
+        const employeeTotal = totals.sss + totals.ph + totals.pi;
+        const employerTotal = employer.sss + employer.ph + employer.pi;
+        return { employee: totals, employer, employeeTotal, employerTotal, grand: employeeTotal + employerTotal };
+    }, [rows, type]);
     const people = type === 'contributions' ? sf.members.map((m) => ({ id: m.id, name: m.fullName })) : employees.list.map((e) => ({ id: e.id, name: e.fullName }));
 
     const total = useMemo(() => {
@@ -191,6 +207,30 @@ export default function ReportsPage() {
                         </div>
                     </div>
 
+                    {type === 'payroll' && remittance && (
+                        <div className="rounded-xl border bg-card p-4 shadow-xs">
+                            <h3 className="text-sm font-semibold mb-3">Contribution Remittance Breakdown (Employer vs Employee)</h3>
+                            <div className="grid gap-3 sm:grid-cols-3">
+                                {[
+                                    { label: 'SSS', emp: remittance.employee.sss, er: remittance.employer.sss },
+                                    { label: 'PhilHealth', emp: remittance.employee.ph, er: remittance.employer.ph },
+                                    { label: 'Pag-IBIG', emp: remittance.employee.pi, er: remittance.employer.pi },
+                                ].map((r) => (
+                                    <div key={r.label} className="rounded-lg border p-3 text-sm">
+                                        <div className="font-medium mb-1">{r.label}</div>
+                                        <div className="flex justify-between"><span>Employee</span><span>{peso(r.emp)}</span></div>
+                                        <div className="flex justify-between"><span>Employer</span><span>{peso(r.er)}</span></div>
+                                        <div className="flex justify-between font-semibold border-t mt-1 pt-1"><span>Total</span><span>{peso(r.emp + r.er)}</span></div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold">
+                                <span>Employee total: {peso(remittance.employeeTotal)}</span>
+                                <span>Employer total: {peso(remittance.employerTotal)}</span>
+                                <span>Grand total to remit: {peso(remittance.grand)}</span>
+                            </div>
+                        </div>
+                    )}
                     <div className="overflow-x-auto rounded-xl border bg-card shadow-xs">
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
