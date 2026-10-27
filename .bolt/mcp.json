@@ -1,7 +1,13 @@
 {
   "mcpServers": {
-    "github": {
-      "enabled": true
+    "TestSprite": {
+      "command": "npx",
+      "args": [
+        "@testsprite/testsprite-mcp@latest"
+      ],
+      "env": {
+        "API_KEY": "sk-member-V8BCe5v_hEOTVNJDUVkoPBYWCzHqn_W4QpQ3delAprA"
+      }
     }
   }
 }
