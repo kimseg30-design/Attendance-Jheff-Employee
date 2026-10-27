@@ -47,10 +47,14 @@ export default createEndpoint({
             }
         }
 
-        const toUpdate = [];
         const toCreate = [];
 
         for (const id of input.employeeIds) {
+            // Strictly no duplication: skip employees that already have a record
+            // for this date so the existing status is never overwritten.
+            if (existingByEmp.has(id)) {
+                continue;
+            }
             const record = {
                 employee: [id],
                 workDate: input.workDate,
@@ -62,17 +66,7 @@ export default createEndpoint({
                 overtimeHours: 0,
                 nightDiffHours: 0,
             };
-
-            if (existingByEmp.has(id)) {
-                toUpdate.push({ id: existingByEmp.get(id).id, record });
-            } else {
-                toCreate.push(record);
-            }
-        }
-
-        // Update existing records in place to avoid duplicate rows
-        for (const item of toUpdate) {
-            await db.attendance.update({ id: item.id, record: item.record });
+            toCreate.push(record);
         }
 
         // Create new records only for employees who do not already have one
@@ -81,12 +75,10 @@ export default createEndpoint({
         }
 
         if (input.status === 'Paid Leave') {
-            for (const item of toUpdate)
-                await syncLeaveCredits('attendance', undefined, item.record);
             for (const r of toCreate)
                 await syncLeaveCredits('attendance', undefined, r);
         }
 
-        return { created: input.employeeIds.length };
+        return { created: toCreate.length };
     }),
 });
