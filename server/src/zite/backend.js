@@ -6,10 +6,18 @@ export function createEndpoint(config) {
 const STATUS = { UNAUTHORIZED: 401, FORBIDDEN: 403, NOT_FOUND: 404, BAD_REQUEST: 400, RATE_LIMITED: 429 };
 
 export class ZiteError extends Error {
-  constructor({ code = 'INTERNAL', message, userFacingMessage } = {}) {
+  constructor(arg, status) {
+    if (typeof arg === 'string') {
+      super(arg);
+      this.code = 'ERROR';
+      this.userFacingMessage = arg;
+      this.status = typeof status === 'number' ? status : 500;
+      return;
+    }
+    const { code = 'INTERNAL', message, userFacingMessage } = arg || {};
     super(message || userFacingMessage || code);
     this.code = code;
     this.userFacingMessage = userFacingMessage;
-    this.status = STATUS[code] || 500;
+    this.status = STATUS[code] || (typeof status === 'number' ? status : 500);
   }
 }
