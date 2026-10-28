@@ -45,6 +45,7 @@ export default function ReportsPage() {
     const { data: payslips = [], isLoading: payrollLoading } = useRecords('payslips');
     const employees = useNameMap('employees');
     const sf = useSf();
+    const loading = attendanceLoading || payrollLoading || employees.isLoading || sf.isLoading;
 
     const rows = useMemo(() => {
         if (type === 'attendance')
