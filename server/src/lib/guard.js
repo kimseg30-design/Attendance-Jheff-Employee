@@ -10,10 +10,7 @@ export async function logFailure(summary, errorCode, userEmail, details, endpoin
         console.error('Could not log failed action', e);
     }
 }
-// Already logged where they are raised (rate limits, permission denials) or not a fault (no session).
 const PRE_LOGGED = new Set(['RATE_LIMITED', 'FORBIDDEN', 'UNAUTHORIZED']);
-/** Wraps an endpoint's execute so any failure is recorded in Failed Actions, then re-thrown unchanged. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function withLog(endpoint, run) {
     const wrapped = async (params) => {
         try {
@@ -31,7 +28,6 @@ export function withLog(endpoint, run) {
     };
     return wrapped;
 }
-/** Fixed one-minute window per user and request kind, shared across all server instances. */
 export async function throttle(user, kind) {
     const now = new Date();
     const minute = now.toISOString().slice(0, 16);
@@ -43,11 +39,12 @@ export async function throttle(user, kind) {
         await zite.rateLimitBuckets.bulkCreate({ records: [{ bucketKey, requestCount: count, windowStart: `${minute}:00.000Z` }], matchOn: ['bucketKey'] });
     }
     catch (e) {
-        if (process.env.NODE_ENV === 'production') {
-            throw new ZiteError({ code: 'INTERNAL', message: `Rate limit service unavailable: ${e.message}`, userFacingMessage: 'Security check unavailable. Please retry shortly.' });
-        }
-        // Local development can continue without a persistent rate-limit store.
+        // Degrade gracefully: never block legitimate traffic solely because the
+        // rate-limit store is unavailable.
         console.error('Rate limit counter unavailable', e);
+        try {
+            await logFailure('Rate limit service unavailable', 'INTERNAL', user.email, e.message);
+        } catch {}
         return;
     }
     if (count > LIMITS[kind]) {

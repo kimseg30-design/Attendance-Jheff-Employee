@@ -74,7 +74,7 @@ export default createEndpoint({
             userEmail: String(r.userEmail ?? ''), details: String(r.details ?? ''), endpoint: String(r.endpoint ?? ''), occurredAt: String(r.occurredAt ?? ''),
         }));
 
-        const cacheHealth = getCacheHealth();
+        const cacheHealth = await getCacheHealth();
         const cache = {
             status: 'ok',
             message: `Process-local memory cache active · ${cacheHealth.cachedKeysCount} keys (${cacheHealth.hits} hits, ${cacheHealth.hitRatio} hit ratio). Cache latency is not measured as PostgreSQL latency.`,
