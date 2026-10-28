@@ -28,7 +28,7 @@ export default function PayrollLoansPage() {
     <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
       {sf.isLoading ? <div className="space-y-2 p-4">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-10"/>)}</div> :
             <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground"><tr><th className="p-3">Borrower / Employee</th><th>Loan details</th><th className="text-right">Principal</th><th className="text-right">Outstanding balance</th><th>Next due</th><th>Status</th><th /> </tr></thead>
+          <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground"><tr><th className="p-3">Borrower / Employee</th><th>Loan details</th><th className="text-right">Principal</th><th className="text-right">Outstanding balance</th><th>Next due</th><th>Status</th><th /></tr></thead>
           <tbody>{rows.map(({ c, employee }) => <tr key={c.loan.id} className="border-t hover:bg-muted/30">
             <td className="p-3"><div className="font-semibold">{c.loan.borrowerName}</div><div className="text-xs text-muted-foreground">{employee?.fullName ?? 'No matching employee record'}</div></td>
             <td className="text-xs text-muted-foreground">{c.loan.loanType} · {c.loan.frequency} · {c.loan.monthlyRate}%/mo · {c.loan.termMonths} months</td>
