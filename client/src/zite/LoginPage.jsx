@@ -5,6 +5,7 @@ import { Label } from '@/shared/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { ShieldCheck, Mail, Lock, AlertCircle, CheckCircle2, ExternalLink, Copy, Check, Sparkles } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function LoginPage() {
   const [mode, setMode] = useState('password'); // 'password' | 'magic-link'
@@ -19,7 +20,8 @@ export default function LoginPage() {
   const [copied, setCopied] = useState(false);
   const popupRef = useRef(null);
 
-  const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
+  const rawRedirect = new URLSearchParams(window.location.search).get('redirect') || '/';
+  const redirect = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
   const callbackUrl = `${window.location.origin}/auth/callback`;
   const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || 'https://xurvumenaszahorrxhxf.supabase.co';
   const supabaseCallbackUrl = `${rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')}/auth/v1/callback`;
@@ -230,7 +232,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50/50 p-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md rounded-2xl border bg-card p-6 sm:p-8 shadow-sm space-y-6">
         <div className="text-center space-y-1.5">
           <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-primary/10 text-primary mb-2">
@@ -247,7 +252,7 @@ export default function LoginPage() {
           <Button
             type="button"
             variant="outline"
-            className="w-full flex items-center justify-center gap-2.5 h-11 border-slate-300 hover:bg-slate-50 font-medium text-sm shadow-sm"
+            className="w-full flex items-center justify-center gap-2.5 h-11 border-slate-300 hover:bg-slate-50 dark:border-border dark:hover:bg-accent font-medium text-sm shadow-sm"
             onClick={handleGoogle}
             disabled={loading}
           >
@@ -477,3 +482,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

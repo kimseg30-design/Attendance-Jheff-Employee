@@ -152,6 +152,8 @@ export function loginAsAdmin(adminEmail = 'kimsegarra4@gmail.com') {
 
 export async function updateProfile(data) {
   if (isSupabaseConfigured) {
-    await supabase.auth.updateUser({ data: { full_name: data.name, ...data } });
+    await supabase.auth.updateUser({ data: { full_name: data?.name } });
   }
 }
+
+

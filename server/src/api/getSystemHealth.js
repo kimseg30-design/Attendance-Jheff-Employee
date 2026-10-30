@@ -77,8 +77,8 @@ export default createEndpoint({
         const cacheHealth = await getCacheHealth();
         const cache = {
             status: 'ok',
-            message: `Process-local memory cache active · ${cacheHealth.cachedKeysCount} keys (${cacheHealth.hits} hits, ${cacheHealth.hitRatio} hit ratio). Cache latency is not measured as PostgreSQL latency.`,
-            code: 'process_memory_cache_active',
+            message: `${cacheHealth.engine} active · ${cacheHealth.cachedKeysCount} keys (${cacheHealth.hits} hits, ${cacheHealth.hitRatio} hit ratio). Cache latency is not measured as PostgreSQL latency.`,
+            code: cacheHealth.zeroConfig ? 'process_memory_cache_active' : 'redis_cache_active',
         };
 
         const indexing = {

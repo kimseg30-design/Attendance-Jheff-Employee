@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { ThemeProvider } from 'next-themes';
 import App from './App';
 import LoginPage from './zite/LoginPage';
 import AuthCallback from './zite/AuthCallback';
@@ -10,7 +11,9 @@ const isCallback = path === '/auth/callback' || path.startsWith('/auth/callback'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    {isCallback ? <AuthCallback /> : path === '/login' ? <LoginPage /> : <App />}
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange storageKey="sahod-theme">
+      {isCallback ? <AuthCallback /> : path === '/login' ? <LoginPage /> : <App />}
+    </ThemeProvider>
   </StrictMode>,
 );
 

@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import './loadEnv.js';
 
 // ---------- Process-local memory engine ----------
 class ProcessMemoryCacheEngine {
@@ -110,6 +111,7 @@ class ProcessMemoryCacheEngine {
 class RedisCacheEngine {
   constructor(client) {
     this.client = client;
+    this.client.on('error', () => {});
     this.stats = { hits: 0, misses: 0, writes: 0, deletes: 0, evictions: 0, startedAt: Date.now() };
   }
 
@@ -179,7 +181,8 @@ let redis;
 const redisUrl = (process.env.REDIS_URL || '').trim();
 
 if (redisUrl) {
-  const client = new Redis(redisUrl, { lazyConnect: true, connectTimeout: 2000, maxRetriesPerRequest: 1 });
+  const client = new Redis(redisUrl, { lazyConnect: true, connectTimeout: 10000, maxRetriesPerRequest: 1 });
+  client.on('error', () => {});
   try {
     await client.connect();
     await client.ping();

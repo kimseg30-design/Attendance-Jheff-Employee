@@ -33,6 +33,7 @@ import { useAuth, logout } from '@/zite/auth';
 import { LogOut } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 import RoleSwitcher from './RoleSwitcher';
+import ThemeToggle from './ThemeToggle';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -310,6 +311,10 @@ export default function Layout() {
           <Brand />
           <Nav onNavigate={() => setMobile(false)} />
           <div className="border-t border-sidebar-border p-3 space-y-2">
+            <div className="flex items-center justify-between rounded-lg bg-sidebar-accent/40 px-2 py-1">
+              <span className="text-xs font-medium">Appearance</span>
+              <ThemeToggle className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+            </div>
             <PWAInstallButton className="w-full justify-start bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90" />
             <Button
               variant="outline"
@@ -339,6 +344,7 @@ export default function Layout() {
             <span className="ml-2 truncate font-bold md:ml-0">Sahod</span>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <RoleSwitcher />
             <PWAInstallButton size="sm" variant="outline" className="h-8 text-xs font-semibold" />
           </div>
